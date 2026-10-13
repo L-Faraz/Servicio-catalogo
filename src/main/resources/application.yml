@@ -1,0 +1,27 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: servicio-catalogo
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/catalogo_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+# Configuración externalizada para conectar con la cátedra
+catedra:
+  integration:
+    api-base-url: ${CATEDRA_API_URL:http://172.17.201.1:8090}
+    jwt-token: ${CATEDRA_JWT_TOKEN:}
+    group-id: ${CATEDRA_GROUP_ID:}
