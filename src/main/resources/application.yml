@@ -21,6 +21,6 @@ spring:
 
 catedra:
   integration:
-    api-base-url: ${CATEDRA_API_URL:http://172.17.201.1:8090}
-    jwt-token: ${CATEDRA_JWT_TOKEN:default_token}
-    group-id: ${CATEDRA_GROUP_ID:1}
+    api-base-url: ${CATEDRA_API_URL:}
+    jwt-token: ${CATEDRA_JWT_TOKEN:}
+    group-id: ${CATEDRA_GROUP_ID:}

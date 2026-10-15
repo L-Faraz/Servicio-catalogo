@@ -35,3 +35,8 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Configuración local (secretos, no commitear) ###
+application-local.yml
+application-local.properties
+.env
