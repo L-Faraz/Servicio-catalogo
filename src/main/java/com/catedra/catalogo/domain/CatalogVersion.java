@@ -1,28 +1,32 @@
 package com.catedra.catalogo.domain;
 
 import jakarta.persistence.*;
-import lombok.*;
-
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "catalog_versions")
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class CatalogVersion {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long id = 1L;
 
     @Column(nullable = false)
-    private Long versionNumber;
+    private Long currentVersion;
 
-    @Column(nullable = false)
-    private LocalDateTime updatedAt;
+    @Column(name = "last_synced_at")
+    private LocalDateTime lastSyncedAt;
 
-    private String description;
+    public CatalogVersion() {}
+
+    public CatalogVersion(Long currentVersion) {
+        this.id = 1L;
+        this.currentVersion = currentVersion;
+        this.lastSyncedAt = LocalDateTime.now();
+    }
+
+    public Long getId() { return id; }
+    public Long getCurrentVersion() { return currentVersion; }
+    public void setCurrentVersion(Long currentVersion) { this.currentVersion = currentVersion; }
+    public LocalDateTime getLastSyncedAt() { return lastSyncedAt; }
+    public void setLastSyncedAt(LocalDateTime lastSyncedAt) { this.lastSyncedAt = lastSyncedAt; }
 }

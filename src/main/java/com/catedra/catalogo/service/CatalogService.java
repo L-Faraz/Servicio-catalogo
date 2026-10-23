@@ -1,17 +1,17 @@
 package com.catedra.catalogo.service;
 
-import com.catedra.catalogo.dto.CategoryDTO;
-import com.catedra.catalogo.dto.ProfessionalDTO;
-import com.catedra.catalogo.dto.CatalogVersionDTO;
+import com.catedra.catalogo.domain.Category;
+import com.catedra.catalogo.domain.Professional;
+import com.catedra.catalogo.domain.WeeklySchedule;
+import com.catedra.catalogo.domain.CatalogVersion;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface CatalogService {
-    List<CategoryDTO> getAllCategories();
-    CategoryDTO createCategory(CategoryDTO categoryDTO);
-    List<ProfessionalDTO> getAllActiveProfessionals();
-    List<ProfessionalDTO> getProfessionalsByCategory(Long categoryId);
-    ProfessionalDTO createProfessional(ProfessionalDTO professionalDTO);
-    CatalogVersionDTO getCurrentCatalogVersion();
-    CatalogVersionDTO incrementCatalogVersion(String description);
+    List<Category> getActiveCategories();
+    List<Professional> getActiveProfessionals();
+    List<Professional> getProfessionalsByCategory(Long categoryId);
+    List<WeeklySchedule> getSchedulesByProfessional(Long professionalId);
+    Optional<CatalogVersion> getCurrentVersion();
 }

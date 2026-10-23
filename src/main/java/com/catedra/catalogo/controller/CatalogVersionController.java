@@ -1,23 +1,24 @@
 package com.catedra.catalogo.controller;
 
-import com.catedra.catalogo.dto.CatalogVersionDTO;
+import com.catedra.catalogo.domain.CatalogVersion;
 import com.catedra.catalogo.service.CatalogService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/version")
-@RequiredArgsConstructor
+@RequestMapping("/api/catalog-version")
 public class CatalogVersionController {
 
     private final CatalogService catalogService;
 
+    public CatalogVersionController(CatalogService catalogService) {
+        this.catalogService = catalogService;
+    }
+
     @GetMapping
-    public ResponseEntity<CatalogVersionDTO> getCurrentCatalogVersion() {
-        CatalogVersionDTO version = catalogService.getCurrentCatalogVersion();
-        return ResponseEntity.ok(version);
+    public ResponseEntity<CatalogVersion> getCurrentVersion() {
+        return catalogService.getCurrentVersion()
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 }
