@@ -19,4 +19,15 @@ public class CatedraProperties {
 
     public String getGroupId() { return groupId; }
     public void setGroupId(String groupId) { this.groupId = groupId; }
+
+    // Propiedades para Kafka
+    private String kafkaBootstrapServers;
+    private String kafkaGroupId;
+
+    public String getKafkaBootstrapServers() { return kafkaBootstrapServers; }
+    public void setKafkaBootstrapServers(String kafkaBootstrapServers) { this.kafkaBootstrapServers = kafkaBootstrapServers; }
+
+    public String getKafkaGroupId() { return kafkaGroupId; }
+    public void setKafkaGroupId(String kafkaGroupId) { this.kafkaGroupId = kafkaGroupId; }
+
 }
