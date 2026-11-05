@@ -7,6 +7,8 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "catedra.integration")
 public class CatedraProperties {
 
+    private String apiBaseUrl;
+    private String jwtToken;
     private String baseUrl;
     private String username;
     private String password;
@@ -16,6 +18,12 @@ public class CatedraProperties {
     private String redisPassword;
     private String kafkaBootstrapServers;
     private String kafkaGroupId;
+
+    public String getApiBaseUrl() { return apiBaseUrl != null ? apiBaseUrl : baseUrl; }
+    public void setApiBaseUrl(String apiBaseUrl) { this.apiBaseUrl = apiBaseUrl; }
+
+    public String getJwtToken() { return jwtToken; }
+    public void setJwtToken(String jwtToken) { this.jwtToken = jwtToken; }
 
     public String getBaseUrl() { return baseUrl; }
     public void setBaseUrl(String baseUrl) { this.baseUrl = baseUrl; }

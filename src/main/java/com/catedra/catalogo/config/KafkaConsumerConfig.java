@@ -33,7 +33,7 @@ public class KafkaConsumerConfig {
 
         String groupId = properties.getKafkaGroupId() != null
                 ? properties.getKafkaGroupId()
-                : properties.getGroupId();
+                : "servicio-catalogo-group";
 
         config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         config.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
