@@ -26,39 +26,86 @@ public class SyncServiceImpl implements SyncService {
 
     private static final Logger log = LoggerFactory.getLogger(SyncServiceImpl.class);
 
-    private final CatedraApiClient apiClient;
-    private final RedisSyncRepository redisRepository;
-    private final CatalogVersionRepository versionRepository;
+    private final CatedraApiClient catedraApiClient;
     private final CategoryRepository categoryRepository;
     private final ProfessionalRepository professionalRepository;
     private final WeeklyScheduleRepository weeklyScheduleRepository;
+    private final RedisSyncRepository redisSyncRepository;
+    private final CatalogVersionRepository versionRepository;
     private final ObjectMapper objectMapper;
 
-    public SyncServiceImpl(CatedraApiClient apiClient,
-                           RedisSyncRepository redisRepository,
-                           CatalogVersionRepository versionRepository,
-                           CategoryRepository categoryRepository,
-                           ProfessionalRepository professionalRepository,
-                           WeeklyScheduleRepository weeklyScheduleRepository,
-                           ObjectMapper objectMapper) {
-        this.apiClient = apiClient;
-        this.redisRepository = redisRepository;
-        this.versionRepository = versionRepository;
+    public SyncServiceImpl(
+            CatedraApiClient catedraApiClient,
+            CategoryRepository categoryRepository,
+            ProfessionalRepository professionalRepository,
+            WeeklyScheduleRepository weeklyScheduleRepository,
+            RedisSyncRepository redisSyncRepository,
+            CatalogVersionRepository versionRepository,
+            ObjectMapper objectMapper) {
+        this.catedraApiClient = catedraApiClient;
         this.categoryRepository = categoryRepository;
         this.professionalRepository = professionalRepository;
         this.weeklyScheduleRepository = weeklyScheduleRepository;
+        this.redisSyncRepository = redisSyncRepository;
+        this.versionRepository = versionRepository;
         this.objectMapper = objectMapper;
     }
 
     @Override
     public CatalogSnapshotDTO syncSnapshot() {
-        log.info("Iniciando sincronización por Snapshot...");
-        return new CatalogSnapshotDTO(0L, List.of(), List.of(), List.of());
+        log.info("Iniciando sincronización completa por Snapshot...");
+        CatalogSnapshotDTO snapshot = catedraApiClient.fetchSnapshot();
+
+        if (snapshot == null) {
+            log.error("El snapshot recibido de la API es nulo.");
+            return null;
+        }
+
+        Long newVersion = snapshot.snapshotVersion() != null ? snapshot.snapshotVersion() : redisSyncRepository.getCurrentVersion();
+        if (newVersion != null) {
+            updateLocalVersion(newVersion);
+        }
+
+        return snapshot;
     }
 
     @Override
+    @Transactional
     public void processIncrementalSync() {
-        log.info("Iniciando proceso de sincronización incremental...");
+        Long redisVersion = redisSyncRepository.getCurrentVersion();
+        Long oldestVersion = redisSyncRepository.getOldestAvailableVersion();
+
+        if (redisVersion == null) {
+            log.warn("No hay información de versiones en Redis. Cancelando proceso incremental.");
+            return;
+        }
+
+        Long localVersion = versionRepository.findById(1L)
+                .map(CatalogVersion::getCurrentVersion)
+                .orElse(0L);
+
+        if (localVersion.equals(redisVersion)) {
+            log.debug("El catálogo local ya está en la última versión ({}).", localVersion);
+            return;
+        }
+
+        // Fallback: Si estamos más atrasados que la versión más vieja disponible en Redis
+        if (oldestVersion != null && localVersion < (oldestVersion - 1)) {
+            log.warn("Versión local ({}) está por detrás de la más antigua en Redis ({}). Ejecutando Snapshot de Fallback...", localVersion, oldestVersion);
+            syncSnapshot();
+            return;
+        }
+
+        // Procesamiento incremental en lote usando el método getEventsBetween de RedisSyncRepository
+        Long nextVersion = localVersion + 1;
+        log.info("Recuperando eventos incrementales desde la versión {} hasta {}", nextVersion, redisVersion);
+
+        List<String> missingEvents = redisSyncRepository.getEventsBetween(nextVersion, redisVersion);
+        for (String eventJson : missingEvents) {
+            applyChange(eventJson);
+        }
+
+        log.info("Sincronización incremental finalizada.");
     }
 
     @Transactional
@@ -162,9 +209,7 @@ public class SyncServiceImpl implements SyncService {
     }
 
     private void updateLocalVersion(Long newVersion) {
-        CatalogVersion version = versionRepository.findById(1L)
-                .orElseGet(() -> new CatalogVersion(0L));
-
+        CatalogVersion version = versionRepository.findById(1L).orElseGet(() -> new CatalogVersion(0L));
         version.setCurrentVersion(newVersion);
         version.setLastSyncedAt(LocalDateTime.now());
         versionRepository.save(version);
