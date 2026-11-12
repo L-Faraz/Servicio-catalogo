@@ -35,7 +35,6 @@ public class SyncServiceImpl implements SyncService {
     private final ObjectMapper objectMapper;
 
     @Override
-    @Transactional
     public CatalogSnapshotDTO syncSnapshot() {
         log.info("Iniciando sincronización por Snapshot...");
 
@@ -100,6 +99,10 @@ public class SyncServiceImpl implements SyncService {
 
         updateLocalVersion(snapshot.snapshotVersion());
         log.info("Snapshot aplicado exitosamente. Versión actual: {}", snapshot.snapshotVersion());
+        Long newVersion = snapshot.snapshotVersion() != null ? snapshot.snapshotVersion() : redisSyncRepository.getCurrentVersion();
+        if (newVersion != null) {
+            updateLocalVersion(newVersion);
+        }
 
         return snapshot;
     }
@@ -212,6 +215,102 @@ public class SyncServiceImpl implements SyncService {
         } catch (Exception e) {
             log.error("Error aplicando versión {}: {}", versionNumber, e.getMessage(), e);
             throw new RuntimeException("Fallo al aplicar cambios de la versión " + versionNumber, e);
+    public void applyChange(String changeJson) {
+        try {
+            CatalogChangeEventDTO event = objectMapper.readValue(changeJson, CatalogChangeEventDTO.class);
+            log.info("Procesando mutación de catálogo: {} | Acción: {} | Versión: {}",
+                    event.entityType(), event.action(), event.version());
+
+            switch (event.entityType().toUpperCase()) {
+                case "CATEGORY" -> processCategoryChange(event);
+                case "PROFESSIONAL" -> processProfessionalChange(event);
+                case "WEEKLY_SCHEDULE" -> processWeeklyScheduleChange(event);
+                default -> log.warn("Tipo de entidad desconocido: {}", event.entityType());
+            }
+
+            updateLocalVersion(event.version());
+
+        } catch (JsonProcessingException e) {
+            log.error("Error al deserializar evento JSON: {}", e.getMessage(), e);
+        } catch (Exception e) {
+            log.error("Error inesperado al aplicar cambio: {}", e.getMessage(), e);
+        }
+    }
+
+    private void processCategoryChange(CatalogChangeEventDTO event) throws JsonProcessingException {
+        CategoryDTO dto = objectMapper.readValue(event.payloadJson(), CategoryDTO.class);
+        String action = event.action().toUpperCase();
+
+        if ("DELETE".equals(action)) {
+            categoryRepository.findById(dto.getId()).ifPresent(category -> {
+                category.setEnabled(false);
+                categoryRepository.save(category);
+            });
+            log.debug("Category borrada (deshabilitada) con ID: {}", dto.getId());
+        } else {
+            Category category = categoryRepository.findById(dto.getId())
+                    .orElseGet(Category::new);
+            category.setId(dto.getId());
+            category.setName(dto.getName());
+            category.setEnabled(true);
+            categoryRepository.save(category);
+            log.debug("Category guardada/actualizada con ID: {}", dto.getId());
+        }
+    }
+
+    private void processProfessionalChange(CatalogChangeEventDTO event) throws JsonProcessingException {
+        ProfessionalDTO dto = objectMapper.readValue(event.payloadJson(), ProfessionalDTO.class);
+        String action = event.action().toUpperCase();
+
+        if ("DELETE".equals(action)) {
+            professionalRepository.findById(dto.getId()).ifPresent(prof -> {
+                prof.setEnabled(false);
+                professionalRepository.save(prof);
+            });
+            log.debug("Professional borrado (deshabilitado) con ID: {}", dto.getId());
+        } else {
+            Professional professional = professionalRepository.findById(dto.getId())
+                    .orElseGet(Professional::new);
+            professional.setId(dto.getId());
+            professional.setName(dto.getFirstName());
+            professional.setLastName(dto.getLastName());
+            professional.setEmail(dto.getEmail());
+            professional.setEnabled(dto.isActive());
+
+            if (dto.getCategory() != null && dto.getCategory().getId() != null) {
+                Category category = categoryRepository.findById(dto.getCategory().getId())
+                        .orElse(null);
+                professional.setCategory(category);
+            }
+
+            professionalRepository.save(professional);
+            log.debug("Professional guardado/actualizado con ID: {}", dto.getId());
+        }
+    }
+
+    private void processWeeklyScheduleChange(CatalogChangeEventDTO event) throws JsonProcessingException {
+        WeeklyScheduleDTO dto = objectMapper.readValue(event.payloadJson(), WeeklyScheduleDTO.class);
+        String action = event.action().toUpperCase();
+
+        if ("DELETE".equals(action)) {
+            weeklyScheduleRepository.findById(dto.getId()).ifPresent(schedule -> {
+                schedule.setEnabled(false);
+                weeklyScheduleRepository.save(schedule);
+            });
+            log.debug("WeeklySchedule borrado (deshabilitado) con ID: {}", dto.getId());
+        } else {
+            WeeklySchedule schedule = weeklyScheduleRepository.findById(dto.getId())
+                    .orElseGet(WeeklySchedule::new);
+            schedule.setId(dto.getId());
+            if (dto.getDayOfWeek() != null) {
+                schedule.setDayOfWeek(dto.getDayOfWeek().getValue());
+            }
+            schedule.setStartTime(dto.getStartTime());
+            schedule.setEndTime(dto.getEndTime());
+            schedule.setEnabled(true);
+
+            weeklyScheduleRepository.save(schedule);
+            log.debug("WeeklySchedule guardado/actualizado con ID: {}", dto.getId());
         }
     }
 
