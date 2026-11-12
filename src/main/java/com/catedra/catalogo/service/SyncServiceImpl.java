@@ -52,7 +52,6 @@ public class SyncServiceImpl implements SyncService {
     }
 
     @Override
-    @Transactional
     public CatalogSnapshotDTO syncSnapshot() {
         log.info("Iniciando sincronización completa por Snapshot...");
         CatalogSnapshotDTO snapshot = catedraApiClient.fetchSnapshot();
@@ -62,57 +61,6 @@ public class SyncServiceImpl implements SyncService {
             return null;
         }
 
-        if (snapshot.categories() != null) {
-            snapshot.categories().forEach(dto -> {
-                Category category = categoryRepository.findById(dto.id())
-                        .orElseGet(Category::new);
-                category.setId(dto.id());
-                category.setName(dto.name());
-                category.setEnabled(dto.enabled());
-                categoryRepository.save(category);
-            });
-        }
-
-        if (snapshot.professionals() != null) {
-            snapshot.professionals().forEach(dto -> {
-                Professional professional = professionalRepository.findById(dto.id())
-                        .orElseGet(Professional::new);
-                professional.setId(dto.id());
-                professional.setName(dto.name());
-                professional.setLastName(dto.lastName());
-                professional.setEmail(dto.email());
-                professional.setEnabled(dto.enabled());
-
-                if (dto.categoryId() != null) {
-                    categoryRepository.findById(dto.categoryId())
-                            .ifPresent(professional::setCategory);
-                }
-
-                professionalRepository.save(professional);
-            });
-        }
-
-        if (snapshot.weeklySchedules() != null) {
-            snapshot.weeklySchedules().forEach(dto -> {
-                WeeklySchedule schedule = weeklyScheduleRepository.findById(dto.id())
-                        .orElseGet(WeeklySchedule::new);
-                schedule.setId(dto.id());
-                schedule.setDayOfWeek(dto.dayOfWeek());
-                schedule.setStartTime(dto.startTime());
-                schedule.setEndTime(dto.endTime());
-                schedule.setSlotDurationMinutes(dto.slotDurationMinutes());
-                schedule.setEnabled(dto.enabled());
-
-                if (dto.professionalId() != null) {
-                    professionalRepository.findById(dto.professionalId())
-                            .ifPresent(schedule::setProfessional);
-                }
-
-                weeklyScheduleRepository.save(schedule);
-            });
-        }
-
-        // Actualizamos a la versión que viene en el snapshot (o desde Redis como respaldo)
         Long newVersion = snapshot.snapshotVersion() != null ? snapshot.snapshotVersion() : redisSyncRepository.getCurrentVersion();
         if (newVersion != null) {
             updateLocalVersion(newVersion);
@@ -160,10 +108,12 @@ public class SyncServiceImpl implements SyncService {
         log.info("Sincronización incremental finalizada.");
     }
 
-    private void applyChange(String changeJson) {
+    @Transactional
+    public void applyChange(String changeJson) {
         try {
             CatalogChangeEventDTO event = objectMapper.readValue(changeJson, CatalogChangeEventDTO.class);
-            log.info("Procesando mutación: {} | Acción: {} | Versión: {}", event.entityType(), event.action(), event.version());
+            log.info("Procesando mutación de catálogo: {} | Acción: {} | Versión: {}",
+                    event.entityType(), event.action(), event.version());
 
             switch (event.entityType().toUpperCase()) {
                 case "CATEGORY" -> processCategoryChange(event);
@@ -183,29 +133,38 @@ public class SyncServiceImpl implements SyncService {
 
     private void processCategoryChange(CatalogChangeEventDTO event) throws JsonProcessingException {
         CategoryDTO dto = objectMapper.readValue(event.payloadJson(), CategoryDTO.class);
-        if ("DELETE".equalsIgnoreCase(event.action())) {
+        String action = event.action().toUpperCase();
+
+        if ("DELETE".equals(action)) {
             categoryRepository.findById(dto.getId()).ifPresent(category -> {
                 category.setEnabled(false);
                 categoryRepository.save(category);
             });
+            log.debug("Category borrada (deshabilitada) con ID: {}", dto.getId());
         } else {
-            Category category = categoryRepository.findById(dto.getId()).orElseGet(Category::new);
+            Category category = categoryRepository.findById(dto.getId())
+                    .orElseGet(Category::new);
             category.setId(dto.getId());
             category.setName(dto.getName());
             category.setEnabled(true);
             categoryRepository.save(category);
+            log.debug("Category guardada/actualizada con ID: {}", dto.getId());
         }
     }
 
     private void processProfessionalChange(CatalogChangeEventDTO event) throws JsonProcessingException {
         ProfessionalDTO dto = objectMapper.readValue(event.payloadJson(), ProfessionalDTO.class);
-        if ("DELETE".equalsIgnoreCase(event.action())) {
+        String action = event.action().toUpperCase();
+
+        if ("DELETE".equals(action)) {
             professionalRepository.findById(dto.getId()).ifPresent(prof -> {
                 prof.setEnabled(false);
                 professionalRepository.save(prof);
             });
+            log.debug("Professional borrado (deshabilitado) con ID: {}", dto.getId());
         } else {
-            Professional professional = professionalRepository.findById(dto.getId()).orElseGet(Professional::new);
+            Professional professional = professionalRepository.findById(dto.getId())
+                    .orElseGet(Professional::new);
             professional.setId(dto.getId());
             professional.setName(dto.getFirstName());
             professional.setLastName(dto.getLastName());
@@ -213,21 +172,29 @@ public class SyncServiceImpl implements SyncService {
             professional.setEnabled(dto.isActive());
 
             if (dto.getCategory() != null && dto.getCategory().getId() != null) {
-                categoryRepository.findById(dto.getCategory().getId()).ifPresent(professional::setCategory);
+                Category category = categoryRepository.findById(dto.getCategory().getId())
+                        .orElse(null);
+                professional.setCategory(category);
             }
+
             professionalRepository.save(professional);
+            log.debug("Professional guardado/actualizado con ID: {}", dto.getId());
         }
     }
 
     private void processWeeklyScheduleChange(CatalogChangeEventDTO event) throws JsonProcessingException {
         WeeklyScheduleDTO dto = objectMapper.readValue(event.payloadJson(), WeeklyScheduleDTO.class);
-        if ("DELETE".equalsIgnoreCase(event.action())) {
+        String action = event.action().toUpperCase();
+
+        if ("DELETE".equals(action)) {
             weeklyScheduleRepository.findById(dto.getId()).ifPresent(schedule -> {
                 schedule.setEnabled(false);
                 weeklyScheduleRepository.save(schedule);
             });
+            log.debug("WeeklySchedule borrado (deshabilitado) con ID: {}", dto.getId());
         } else {
-            WeeklySchedule schedule = weeklyScheduleRepository.findById(dto.getId()).orElseGet(WeeklySchedule::new);
+            WeeklySchedule schedule = weeklyScheduleRepository.findById(dto.getId())
+                    .orElseGet(WeeklySchedule::new);
             schedule.setId(dto.getId());
             if (dto.getDayOfWeek() != null) {
                 schedule.setDayOfWeek(dto.getDayOfWeek().getValue());
@@ -235,7 +202,9 @@ public class SyncServiceImpl implements SyncService {
             schedule.setStartTime(dto.getStartTime());
             schedule.setEndTime(dto.getEndTime());
             schedule.setEnabled(true);
+
             weeklyScheduleRepository.save(schedule);
+            log.debug("WeeklySchedule guardado/actualizado con ID: {}", dto.getId());
         }
     }
 
