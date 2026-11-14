@@ -1,7 +1,11 @@
 package com.catedra.catalogo.domain;
 
-import jakarta.persistence.*;
-import java.time.LocalDateTime;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+import java.time.Instant;
 
 @Entity
 @Table(name = "catalog_versions")
@@ -14,19 +18,20 @@ public class CatalogVersion {
     private Long currentVersion;
 
     @Column(name = "last_synced_at")
-    private LocalDateTime lastSyncedAt;
+    private Instant lastSyncedAt;
 
-    public CatalogVersion() {}
+    public CatalogVersion() {
+    }
 
     public CatalogVersion(Long currentVersion) {
         this.id = 1L;
         this.currentVersion = currentVersion;
-        this.lastSyncedAt = LocalDateTime.now();
+        this.lastSyncedAt = Instant.now();
     }
 
     public Long getId() { return id; }
     public Long getCurrentVersion() { return currentVersion; }
     public void setCurrentVersion(Long currentVersion) { this.currentVersion = currentVersion; }
-    public LocalDateTime getLastSyncedAt() { return lastSyncedAt; }
-    public void setLastSyncedAt(LocalDateTime lastSyncedAt) { this.lastSyncedAt = lastSyncedAt; }
+    public Instant getLastSyncedAt() { return lastSyncedAt; }
+    public void setLastSyncedAt(Instant lastSyncedAt) { this.lastSyncedAt = lastSyncedAt; }
 }

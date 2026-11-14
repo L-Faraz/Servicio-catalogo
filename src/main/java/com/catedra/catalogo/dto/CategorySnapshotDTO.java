@@ -1,7 +1,16 @@
 package com.catedra.catalogo.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import java.time.Instant;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record CategorySnapshotDTO(
         Long id,
         String name,
-        Boolean enabled
-) {}
+        String description,
+        Boolean enabled,
+        Instant createdAt,
+        Instant updatedAt
+) {
+}
