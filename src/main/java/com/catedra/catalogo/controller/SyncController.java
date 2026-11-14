@@ -1,8 +1,10 @@
 package com.catedra.catalogo.controller;
 
 import com.catedra.catalogo.dto.CatalogSnapshotDTO;
+import com.catedra.catalogo.dto.SyncStatusDTO;
 import com.catedra.catalogo.service.SyncService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -19,7 +21,17 @@ public class SyncController {
 
     @PostMapping("/snapshot")
     public ResponseEntity<CatalogSnapshotDTO> syncSnapshot() {
-        CatalogSnapshotDTO result = syncService.syncSnapshot();
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(syncService.syncSnapshot());
+    }
+
+    @PostMapping("/incremental")
+    public ResponseEntity<Void> syncIncremental() {
+        syncService.processIncrementalSync();
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/status")
+    public SyncStatusDTO getStatus() {
+        return syncService.getStatus();
     }
 }
