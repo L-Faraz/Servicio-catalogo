@@ -1,20 +1,17 @@
 package com.catedra.catalogo.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-import java.time.DayOfWeek;
+import java.time.Instant;
 import java.time.LocalTime;
 
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class WeeklyScheduleDTO {
-    private Long id;
-    private DayOfWeek dayOfWeek;
-    private LocalTime startTime;
-    private LocalTime endTime;
+public record WeeklyScheduleDTO(
+        Long id,
+        Long professionalId,
+        String dayOfWeek,
+        LocalTime startTime,
+        LocalTime endTime,
+        Integer slotDurationMinutes,
+        Boolean enabled,
+        Instant createdAt,
+        Instant updatedAt
+) {
 }

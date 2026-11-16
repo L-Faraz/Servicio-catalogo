@@ -1,7 +1,19 @@
 package com.catedra.catalogo.domain;
 
-import jakarta.persistence.*;
-import java.time.LocalDateTime;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+
+import java.time.DayOfWeek;
+import java.time.Instant;
 import java.time.LocalTime;
 
 @Entity
@@ -9,18 +21,19 @@ import java.time.LocalTime;
 public class WeeklySchedule {
 
     @Id
-    private Long id; // ID externo de la cátedra
+    private Long id;
 
-    @Column(nullable = false)
-    private Integer dayOfWeek;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "day_of_week", nullable = false)
+    private DayOfWeek dayOfWeek;
 
-    @Column(nullable = false)
+    @Column(name = "start_time", nullable = false)
     private LocalTime startTime;
 
-    @Column(nullable = false)
+    @Column(name = "end_time", nullable = false)
     private LocalTime endTime;
 
-    @Column(nullable = false)
+    @Column(name = "slot_duration_minutes", nullable = false)
     private Integer slotDurationMinutes;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -31,28 +44,36 @@ public class WeeklySchedule {
     private Boolean enabled = true;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
-    public WeeklySchedule() {}
+    public WeeklySchedule() {
+    }
 
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+        Instant now = Instant.now();
+        if (this.createdAt == null) {
+            this.createdAt = now;
+        }
+        if (this.updatedAt == null) {
+            this.updatedAt = this.createdAt;
+        }
     }
 
     @PreUpdate
     protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        if (this.updatedAt == null) {
+            this.updatedAt = Instant.now();
+        }
     }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    public Integer getDayOfWeek() { return dayOfWeek; }
-    public void setDayOfWeek(Integer dayOfWeek) { this.dayOfWeek = dayOfWeek; }
+    public DayOfWeek getDayOfWeek() { return dayOfWeek; }
+    public void setDayOfWeek(DayOfWeek dayOfWeek) { this.dayOfWeek = dayOfWeek; }
     public LocalTime getStartTime() { return startTime; }
     public void setStartTime(LocalTime startTime) { this.startTime = startTime; }
     public LocalTime getEndTime() { return endTime; }
@@ -63,6 +84,8 @@ public class WeeklySchedule {
     public void setProfessional(Professional professional) { this.professional = professional; }
     public Boolean getEnabled() { return enabled; }
     public void setEnabled(Boolean enabled) { this.enabled = enabled; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public Instant getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 }

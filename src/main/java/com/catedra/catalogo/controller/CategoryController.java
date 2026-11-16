@@ -1,9 +1,11 @@
 package com.catedra.catalogo.controller;
 
-import com.catedra.catalogo.domain.Category;
+import com.catedra.catalogo.dto.CategoryDTO;
 import com.catedra.catalogo.service.CatalogService;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
@@ -18,7 +20,7 @@ public class CategoryController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Category>> getActiveCategories() {
-        return ResponseEntity.ok(catalogService.getActiveCategories());
+    public List<CategoryDTO> getCategories(@RequestParam(required = false) Boolean enabled) {
+        return catalogService.getCategories(enabled);
     }
 }

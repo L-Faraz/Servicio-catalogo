@@ -11,16 +11,38 @@ spring:
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
 
+  flyway:
+    enabled: true
+
   jpa:
+    open-in-view: false
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: none
+    show-sql: false
     properties:
       hibernate:
         format_sql: true
+
+  mvc:
+    problemdetails:
+      enabled: true
 
 catedra:
   integration:
     api-base-url: ${CATEDRA_API_URL:}
     jwt-token: ${CATEDRA_JWT_TOKEN:}
     group-id: ${CATEDRA_GROUP_ID:}
+    provisioning-status: ${CATEDRA_PROVISIONING_STATUS:}
+    redis-host: ${CATEDRA_REDIS_HOST:}
+    redis-port: ${CATEDRA_REDIS_PORT:6379}
+    redis-username: ${CATEDRA_REDIS_USERNAME:}
+    redis-password: ${CATEDRA_REDIS_PASSWORD:}
+    redis-read-namespace: ${CATEDRA_REDIS_READ_NAMESPACE:catedra:sync:*}
+    redis-write-namespace: ${CATEDRA_REDIS_WRITE_NAMESPACE:}
+    kafka-bootstrap-servers: ${CATEDRA_KAFKA_BOOTSTRAP_SERVERS:}
+    kafka-consumer-group-id: ${CATEDRA_KAFKA_CONSUMER_GROUP_ID:servicio-catalogo-group}
+    kafka-catalog-topic: ${CATEDRA_KAFKA_CATALOG_TOPIC:catedra.catalog.events}
+    kafka-enabled: ${CATEDRA_KAFKA_ENABLED:true}
+    reconciliation-enabled: ${CATEDRA_RECONCILIATION_ENABLED:true}
+    reconciliation-interval-ms: ${CATEDRA_RECONCILIATION_INTERVAL_MS:60000}
+    reconciliation-initial-delay-ms: ${CATEDRA_RECONCILIATION_INITIAL_DELAY_MS:30000}

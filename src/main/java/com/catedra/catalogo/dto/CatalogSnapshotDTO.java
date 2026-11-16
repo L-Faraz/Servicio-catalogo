@@ -1,10 +1,16 @@
 package com.catedra.catalogo.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import java.time.Instant;
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record CatalogSnapshotDTO(
-        Long snapshotVersion,                               // Un número de versión para saber qué tan reciente es la info
-        List<CategorySnapshotDTO> categories,               // La lista con todas las categorías
-        List<ProfessionalSnapshotDTO> professionals,        // La lista con todos los profesionales
-        List<WeeklyScheduleSnapshotDTO> weeklySchedules     // La lista con todos los horarios
-) {}
+        Long snapshotVersion,
+        Instant generatedAt,
+        List<CategorySnapshotDTO> professionalCategories,
+        List<ProfessionalSnapshotDTO> professionals,
+        List<WeeklyScheduleSnapshotDTO> weeklySchedules
+) {
+}

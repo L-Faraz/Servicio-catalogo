@@ -15,16 +15,22 @@ public class SyncBootstrap implements ApplicationRunner {
 
     private final SyncService syncService;
     private final CatalogVersionRepository versionRepository;
+    private final CatedraProperties properties;
 
-    public SyncBootstrap(SyncService syncService, CatalogVersionRepository versionRepository) {
+    public SyncBootstrap(SyncService syncService, CatalogVersionRepository versionRepository, CatedraProperties properties) {
         this.syncService = syncService;
         this.versionRepository = versionRepository;
+        this.properties = properties;
     }
 
     @Override
     public void run(ApplicationArguments args) {
-        long versionCount = versionRepository.count();
+        if (!properties.isConfigured()) {
+            log.warn("Integracion con catedra sin configurar. Se omite la sincronizacion inicial.");
+            return;
+        }
 
+        long versionCount = versionRepository.count();
         if (versionCount == 0) {
             log.info("Base de datos local vacia. Iniciando sincronizacion completa (Snapshot)...");
             try {
