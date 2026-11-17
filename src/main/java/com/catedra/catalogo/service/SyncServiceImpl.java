@@ -166,11 +166,20 @@ public class SyncServiceImpl implements SyncService {
     }
 
     private void doProcessIncremental() {
-        Long redisVersion = redisSyncRepository.getCurrentVersion();
-        Long oldestVersion = redisSyncRepository.getOldestAvailableVersion();
+        Long redisVersion;
+        Long oldestVersion;
+        try {
+            redisVersion = redisSyncRepository.getCurrentVersion();
+            oldestVersion = redisSyncRepository.getOldestAvailableVersion();
+        } catch (RuntimeException e) {
+            log.warn("No se pudo consultar Redis ({}). Ejecutando snapshot.", message(e));
+            doSnapshot();
+            return;
+        }
 
         if (redisVersion == null) {
-            log.warn("No se encontro current-version en Redis.");
+            log.warn("Redis no informa current-version. Ejecutando snapshot.");
+            doSnapshot();
             return;
         }
 
@@ -183,6 +192,13 @@ public class SyncServiceImpl implements SyncService {
 
         if (localVersion.equals(redisVersion)) {
             log.info("El catalogo ya esta en la ultima version ({}).", localVersion);
+            return;
+        }
+
+        if (localVersion > redisVersion) {
+            log.warn("Version local {} mayor que la version de Redis {}. Ejecutando snapshot.",
+                    localVersion, redisVersion);
+            doSnapshot();
             return;
         }
 
