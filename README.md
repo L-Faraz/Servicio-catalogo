@@ -81,7 +81,7 @@ Ejemplo de payload de JWT emitido por `servicio-turnos`:
 
 - **Snapshot:** reemplaza el catalogo completo dentro de una transaccion.
 - **Incremental:** aplica cada version de cambio en su propia transaccion y avanza la version local.
-- **Discontinuidad:** si la version local quedo fuera de la ventana de Redis (`localVersion < oldestVersion`), se fuerza un snapshot.
+- **Discontinuidad:** si la version local quedo fuera de la ventana de Redis (`localVersion < oldestVersion`), si `localVersion > redisVersion` o si Redis no informa la version actual, se fuerza un snapshot.
 - **Kafka:** consume `CatalogUpdated`, deduplica por `eventId` en `processed_catalog_events` y confirma el offset solo si el procesamiento fue exitoso.
 - **Reconciliacion:** job periodico que ejecuta sincronizacion incremental para recuperar eventos perdidos.
 

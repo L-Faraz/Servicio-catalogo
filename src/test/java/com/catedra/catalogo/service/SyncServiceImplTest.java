@@ -214,6 +214,52 @@ class SyncServiceImplTest {
     }
 
     @Test
+    void localVersionAheadOfRedisTriggersSnapshot() {
+        when(redisSyncRepository.getCurrentVersion()).thenReturn(5L);
+        when(redisSyncRepository.getOldestAvailableVersion()).thenReturn(4L);
+        when(versionRepository.findById(1L)).thenReturn(Optional.of(new CatalogVersion(7L)));
+        when(catedraApiClient.fetchSnapshot()).thenReturn(snapshot(5L));
+        doAnswer(invocation -> invocation.getArgument(0)).when(categoryRepository).save(any());
+        doAnswer(invocation -> invocation.getArgument(0)).when(professionalRepository).save(any());
+
+        syncService.processIncrementalSync();
+
+        verify(catedraApiClient).fetchSnapshot();
+        verify(redisSyncRepository, never()).getChangeForVersion(anyLong());
+        verify(statusService).markIdle();
+    }
+
+    @Test
+    void missingRedisVersionTriggersSnapshot() {
+        when(redisSyncRepository.getCurrentVersion()).thenReturn(null);
+        when(versionRepository.findById(1L)).thenReturn(Optional.of(new CatalogVersion(7L)));
+        when(catedraApiClient.fetchSnapshot()).thenReturn(snapshot(7L));
+        doAnswer(invocation -> invocation.getArgument(0)).when(categoryRepository).save(any());
+        doAnswer(invocation -> invocation.getArgument(0)).when(professionalRepository).save(any());
+
+        syncService.processIncrementalSync();
+
+        verify(catedraApiClient).fetchSnapshot();
+        verify(redisSyncRepository, never()).getChangeForVersion(anyLong());
+        verify(statusService).markIdle();
+    }
+
+    @Test
+    void redisFailureTriggersSnapshot() {
+        when(redisSyncRepository.getCurrentVersion()).thenThrow(new IllegalStateException("redis down"));
+        when(versionRepository.findById(1L)).thenReturn(Optional.of(new CatalogVersion(7L)));
+        when(catedraApiClient.fetchSnapshot()).thenReturn(snapshot(7L));
+        doAnswer(invocation -> invocation.getArgument(0)).when(categoryRepository).save(any());
+        doAnswer(invocation -> invocation.getArgument(0)).when(professionalRepository).save(any());
+
+        syncService.processIncrementalSync();
+
+        verify(catedraApiClient).fetchSnapshot();
+        verify(redisSyncRepository, never()).getChangeForVersion(anyLong());
+        verify(statusService).markIdle();
+    }
+
+    @Test
     void alreadyCurrentVersionDoesNothing() {
         when(redisSyncRepository.getCurrentVersion()).thenReturn(7L);
         when(redisSyncRepository.getOldestAvailableVersion()).thenReturn(4L);
