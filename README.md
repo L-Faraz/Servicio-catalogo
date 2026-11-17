@@ -100,6 +100,12 @@ Ejemplo de payload de JWT emitido por `servicio-turnos`:
 
 Parametros de busqueda de profesionales: `categoryId`, `name`, `enabled` (default `true`), `dayOfWeek`, `time`, `page`, `size`, `sort`.
 
+## Contrato con servicio-turnos
+
+El contrato de integracion para construir disponibilidad y validar reservas esta en [`docs/contract-catalogo-turnos.md`](docs/contract-catalogo-turnos.md).
+
+`servicio-turnos` consume los endpoints de lectura del catalogo con un JWT de rol `SERVICE`. La app KMP no consulta el catalogo directamente para disponibilidad.
+
 ## Pruebas
 
 ```bash
