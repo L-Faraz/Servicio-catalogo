@@ -48,8 +48,8 @@ catedra:
     redis-read-namespace: ${CATEDRA_REDIS_READ_NAMESPACE:catedra:sync:*}
     redis-write-namespace: ${CATEDRA_REDIS_WRITE_NAMESPACE:}
     kafka-bootstrap-servers: ${CATEDRA_KAFKA_BOOTSTRAP_SERVERS:}
-    kafka-consumer-group-id: ${CATEDRA_KAFKA_CONSUMER_GROUP_ID:servicio-catalogo-group}
-    kafka-catalog-topic: ${CATEDRA_KAFKA_CATALOG_TOPIC:catedra.catalog.events}
+    kafka-consumer-group-id: ${CATEDRA_KAFKA_CONSUMER_GROUP_ID:}
+    kafka-catalog-topic: ${CATEDRA_KAFKA_CATALOG_TOPIC:}
     kafka-enabled: ${CATEDRA_KAFKA_ENABLED:true}
     reconciliation-enabled: ${CATEDRA_RECONCILIATION_ENABLED:true}
     reconciliation-interval-ms: ${CATEDRA_RECONCILIATION_INTERVAL_MS:60000}

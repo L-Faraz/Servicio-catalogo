@@ -36,9 +36,7 @@ public class KafkaConsumerConfig {
                 ? properties.getKafkaBootstrapServers()
                 : "localhost:9092";
 
-        String groupId = StringUtils.hasText(properties.getKafkaConsumerGroupId())
-                ? properties.getKafkaConsumerGroupId()
-                : "servicio-catalogo-group";
+        String groupId = properties.getEffectiveKafkaConsumerGroupId();
 
         config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         config.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
