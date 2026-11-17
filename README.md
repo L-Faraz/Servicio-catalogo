@@ -47,8 +47,35 @@ Los valores de conexion e integracion se pasan por variables de entorno. No se v
 | `CATEDRA_RECONCILIATION_ENABLED` | Habilita la reconciliacion periodica | `true` |
 | `CATEDRA_RECONCILIATION_INTERVAL_MS` | Intervalo de reconciliacion | `60000` |
 | `CATEDRA_RECONCILIATION_INITIAL_DELAY_MS` | Delay inicial de reconciliacion | `30000` |
+| `APP_JWT_SECRET` | Secreto HS256 para validar los JWT emitidos por `servicio-turnos` | sin default |
+| `APP_JWT_ISSUER` | Emisor esperado del JWT | `servicio-turnos` |
+| `APP_CORS_ALLOWED_ORIGINS` | Origenes permitidos por CORS, separados por coma | sin default |
 
 Para desarrollo local se pueden definir en la run config del IDE o en un archivo `application-local.yml` (ignorado por git).
+
+## Seguridad
+
+El servicio actua como resource server: no emite JWT de usuarios, solo valida los tokens emitidos por `servicio-turnos`.
+
+- `APP_JWT_SECRET` es obligatorio y debe tener al menos 32 bytes para HS256.
+- El claim `roles` define las autoridades. Cada valor se prefija con `ROLE_`.
+- Los endpoints `/api/**` requieren un JWT valido.
+- Los endpoints `/api/synchronization/**` requieren rol `SERVICE` o `ADMIN`.
+- El resto de las APIs acepta roles `USER`, `SERVICE` o `ADMIN`.
+- `CATEDRA_JWT_TOKEN` sigue siendo exclusivamente el token tecnico para la API de la catedra.
+- `APP_CORS_ALLOWED_ORIGINS` acepta una lista separada por comas, por ejemplo `http://localhost:3000,http://localhost:8080`.
+
+Ejemplo de payload de JWT emitido por `servicio-turnos`:
+
+```json
+{
+  "sub": "user-42",
+  "iss": "servicio-turnos",
+  "roles": ["USER"],
+  "iat": 1780000000,
+  "exp": 1780003600
+}
+```
 
 ## Sincronizacion
 
@@ -60,16 +87,16 @@ Para desarrollo local se pueden definir en la run config del IDE o en un archivo
 
 ## Endpoints
 
-| Metodo | Ruta | Descripcion |
-| --- | --- | --- |
-| `GET` | `/api/categories?enabled=` | Lista categorias, opcionalmente filtradas por estado |
-| `GET` | `/api/professionals` | Busca profesionales con paginacion |
-| `GET` | `/api/professionals/{id}` | Detalle de un profesional |
-| `GET` | `/api/professionals/{id}/schedules` | Horarios de un profesional |
-| `GET` | `/api/catalog-version` | Version actual del catalogo |
-| `POST` | `/api/synchronization/snapshot` | Fuerza una sincronizacion por snapshot |
-| `POST` | `/api/synchronization/incremental` | Fuerza una sincronizacion incremental |
-| `GET` | `/api/synchronization/status` | Estado actual de la sincronizacion |
+| Metodo | Ruta | Descripcion | Acceso |
+| --- | --- | --- | --- |
+| `GET` | `/api/categories?enabled=` | Lista categorias, opcionalmente filtradas por estado | `USER`, `SERVICE`, `ADMIN` |
+| `GET` | `/api/professionals` | Busca profesionales con paginacion | `USER`, `SERVICE`, `ADMIN` |
+| `GET` | `/api/professionals/{id}` | Detalle de un profesional | `USER`, `SERVICE`, `ADMIN` |
+| `GET` | `/api/professionals/{id}/schedules` | Horarios de un profesional | `USER`, `SERVICE`, `ADMIN` |
+| `GET` | `/api/catalog-version` | Version actual del catalogo | `USER`, `SERVICE`, `ADMIN` |
+| `POST` | `/api/synchronization/snapshot` | Fuerza una sincronizacion por snapshot | `SERVICE`, `ADMIN` |
+| `POST` | `/api/synchronization/incremental` | Fuerza una sincronizacion incremental | `SERVICE`, `ADMIN` |
+| `GET` | `/api/synchronization/status` | Estado actual de la sincronizacion | `SERVICE`, `ADMIN` |
 
 Parametros de busqueda de profesionales: `categoryId`, `name`, `enabled` (default `true`), `dayOfWeek`, `time`, `page`, `size`, `sort`.
 

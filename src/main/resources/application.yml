@@ -27,6 +27,14 @@ spring:
     problemdetails:
       enabled: true
 
+app:
+  security:
+    jwt:
+      secret: ${APP_JWT_SECRET:}
+      issuer: ${APP_JWT_ISSUER:servicio-turnos}
+    cors:
+      allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:}
+
 catedra:
   integration:
     api-base-url: ${CATEDRA_API_URL:}
