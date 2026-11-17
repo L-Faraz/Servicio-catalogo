@@ -14,7 +14,8 @@ El catalogo es una copia local sincronizada desde la catedra. `servicio-turnos` 
 ## 2. Decisiones de arquitectura
 
 - `servicio-turnos` consulta directamente a `Servicio-catalogo` por HTTP REST.
-- La aplicacion KMP no consulta a `Servicio-catalogo` para disponibilidad. KMP consulta a `servicio-turnos`.
+- Para disponibilidad, KMP consulta a `servicio-turnos`; no consulta el catalogo para calcular slots.
+- La busqueda de profesionales desde KMP queda fuera de este contrato. Puede resolverse contra los endpoints de lectura del catalogo con JWT `USER` o a traves de `servicio-turnos`, siempre sobre la copia local del catalogo.
 - `servicio-turnos` es el emisor de los JWT de los usuarios finales.
 - `servicio-turnos` tambien emite el JWT de servicio usado en llamadas internas al catalogo.
 - `Servicio-catalogo` solo valida JWT; no emite tokens.
@@ -51,6 +52,8 @@ Ejemplo de payload del token de servicio:
 Los endpoints de lectura aceptan `USER`, `SERVICE` o `ADMIN`. Para integracion entre servicios se debe usar `SERVICE`.
 
 `servicio-turnos` y `Servicio-catalogo` deben compartir el mismo `APP_JWT_SECRET`. El secreto debe tener al menos 32 bytes.
+
+El token de servicio no propaga la identidad del usuario final. El catalogo solo devuelve datos de catalogo, no datos de usuarios ni reservas. La asociacion usuario-reserva y la trazabilidad se mantienen en `servicio-turnos`, que conserva el `sub` del JWT de usuario. Por ese motivo las llamadas al catalogo no necesitan `externalPatientId` ni un identificador de usuario.
 
 ## 4. URL base
 
@@ -127,18 +130,6 @@ Respuesta `200`:
       "updatedAt": "2026-09-02T11:30:00Z"
     }
   ],
-  "pageable": {
-    "pageNumber": 0,
-    "pageSize": 20,
-    "sort": {
-      "sorted": true,
-      "unsorted": false,
-      "empty": false
-    },
-    "offset": 0,
-    "paged": true,
-    "unpaged": false
-  },
   "totalElements": 1,
   "totalPages": 1,
   "last": true,
@@ -149,6 +140,8 @@ Respuesta `200`:
   "empty": false
 }
 ```
+
+La respuesta es un `Page` de Spring Data. Ademas de `content`, incluye metadatos estandar de paginacion (`totalElements`, `totalPages`, `number`, `size`, `first`, `last`, `numberOfElements`, `empty`). Los consumidores deben usar `content` y los metadatos, sin depender del detalle interno del objeto `pageable`.
 
 Uso esperado en turnos: busqueda de profesionales y validacion de que el profesional siga vigente antes de iniciar una reserva.
 
@@ -255,14 +248,14 @@ Los errores funcionales usan `ProblemDetail` (RFC 7807) e incluyen el campo `cod
 
 ```json
 {
-  "type": "about:blank",
   "title": "Resource not found",
   "status": 404,
   "detail": "No existe el profesional 999",
-  "instance": "/api/professionals/999",
   "code": "RESOURCE_NOT_FOUND"
 }
 ```
+
+`type` e `instance` son opcionales y pueden aparecer segun como Spring complete el `ProblemDetail`. El campo estable para decidir es `code`; el texto de `detail` no debe usarse para logica de negocio.
 
 Codigos del catalogo:
 
