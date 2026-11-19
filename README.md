@@ -117,7 +117,23 @@ El contrato de integracion para construir disponibilidad y validar reservas esta
 
 Los tests usan H2 en memoria, Kafka y Flyway desactivados, y no requieren servicios externos.
 
-## Ejecutar
+## Docker
+
+Copiar `.env.example` a `.env` y completar los valores reales. El archivo `.env` esta ignorado por git.
+
+```bash
+cp .env.example .env
+docker compose up --build -d
+docker compose ps
+curl http://localhost:8081/actuator/health
+docker compose logs -f servicio-catalogo
+```
+
+El compose levanta PostgreSQL y el servicio de catalogo. Redis y Kafka son externos y se configuran con las variables `CATEDRA_*`. Si no se informan, el servicio arranca sin sincronizacion y responde con el catalogo local persistido.
+
+El healthcheck del servicio usa `/actuator/health`. La base de datos tiene un healthcheck con `pg_isready` y volumen persistente `catalogo_db_data`.
+
+## Ejecutar sin Docker
 
 ```bash
 ./gradlew bootRun
