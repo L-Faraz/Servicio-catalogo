@@ -47,6 +47,10 @@ Los valores de conexion e integracion se pasan por variables de entorno. No se v
 | `CATEDRA_RECONCILIATION_ENABLED` | Habilita la reconciliacion periodica | `true` |
 | `CATEDRA_RECONCILIATION_INTERVAL_MS` | Intervalo de reconciliacion | `60000` |
 | `CATEDRA_RECONCILIATION_INITIAL_DELAY_MS` | Delay inicial de reconciliacion | `30000` |
+| `CATEDRA_PROCESSED_EVENTS_RETENTION_DAYS` | Dias de retencion de eventos Kafka deduplicados | `7` |
+| `CATEDRA_PROCESSED_EVENTS_CLEANUP_ENABLED` | Habilita la limpieza periodica de eventos procesados | `true` |
+| `CATEDRA_PROCESSED_EVENTS_CLEANUP_INTERVAL_MS` | Intervalo de limpieza de eventos procesados | `3600000` |
+| `CATEDRA_PROCESSED_EVENTS_CLEANUP_INITIAL_DELAY_MS` | Delay inicial de limpieza de eventos procesados | `60000` |
 | `APP_JWT_SECRET` | Secreto HS256 para validar los JWT emitidos por `servicio-turnos` | sin default |
 | `APP_JWT_ISSUER` | Emisor esperado del JWT | `servicio-turnos` |
 | `APP_CORS_ALLOWED_ORIGINS` | Origenes permitidos por CORS, separados por coma | sin default |
@@ -85,8 +89,9 @@ Ejemplo de payload de JWT emitido por `servicio-turnos`:
 - **Incremental:** aplica cada version de cambio en su propia transaccion y avanza la version local.
 - **Discontinuidad:** si la version local quedo fuera de la ventana de Redis (`localVersion < oldestVersion`), si `localVersion > redisVersion` o si Redis no informa la version actual, se fuerza un snapshot.
 - **Kafka:** consume `catedra.catalog.{groupId}` con el consumer group `alumnos-{groupId}`, deduplica por `eventId` en `processed_catalog_events` y confirma el offset solo si el procesamiento fue exitoso.
-- **Provisioning:** si `CATEDRA_PROVISIONING_STATUS` esta informado y no es `PROVISIONED`, no se ejecuta el snapshot inicial.
+- **Provisioning:** si `CATEDRA_PROVISIONING_STATUS` esta informado y no es `PROVISIONED`, no se ejecuta el snapshot inicial, no corre la reconciliacion y los endpoints manuales de sincronizacion devuelven `503`.
 - **Reconciliacion:** job periodico que ejecuta sincronizacion incremental para recuperar eventos perdidos.
+- **Limpieza:** job periodico que elimina eventos deduplicados anteriores a la retencion configurada.
 
 ## Endpoints
 

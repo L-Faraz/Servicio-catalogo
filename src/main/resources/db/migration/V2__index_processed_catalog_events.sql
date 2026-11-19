@@ -1,0 +1,1 @@
+create index idx_processed_catalog_events_processed_at on processed_catalog_events(processed_at);
