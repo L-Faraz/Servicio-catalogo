@@ -30,6 +30,12 @@ public class SyncBootstrap implements ApplicationRunner {
             return;
         }
 
+        if (properties.isProvisioningBlocked()) {
+            log.warn("La integracion no esta PROVISIONED ({}). Se omite la sincronizacion inicial.",
+                    properties.getProvisioningStatus());
+            return;
+        }
+
         long versionCount = versionRepository.count();
         if (versionCount == 0) {
             log.info("Base de datos local vacia. Iniciando sincronizacion completa (Snapshot)...");

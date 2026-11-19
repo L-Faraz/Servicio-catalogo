@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
@@ -17,6 +18,7 @@ import org.springframework.util.StringUtils;
 
 @Component
 @ConditionalOnProperty(name = "catedra.integration.kafka-enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnExpression("'${catedra.integration.group-id:}' != '' || '${catedra.integration.kafka-catalog-topic:}' != ''")
 public class CatalogEventListener {
 
     private static final Logger log = LoggerFactory.getLogger(CatalogEventListener.class);
@@ -34,8 +36,8 @@ public class CatalogEventListener {
     }
 
     @KafkaListener(
-            topics = "${catedra.integration.kafka-catalog-topic:catedra.catalog.events}",
-            groupId = "${catedra.integration.kafka-consumer-group-id:servicio-catalogo-group}",
+            topics = "#{@catedraProperties.effectiveKafkaCatalogTopic}",
+            groupId = "#{@catedraProperties.effectiveKafkaConsumerGroupId}",
             containerFactory = "kafkaListenerContainerFactory"
     )
     public void handleCatalogEvent(ConsumerRecord<String, String> record, Acknowledgment acknowledgment) {

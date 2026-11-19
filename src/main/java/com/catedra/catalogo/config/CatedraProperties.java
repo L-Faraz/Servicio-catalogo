@@ -32,6 +32,35 @@ public class CatedraProperties {
                 && StringUtils.hasText(redisHost);
     }
 
+    public String getEffectiveKafkaCatalogTopic() {
+        if (StringUtils.hasText(kafkaCatalogTopic)) {
+            return kafkaCatalogTopic;
+        }
+        return StringUtils.hasText(groupId) ? "catedra.catalog." + groupId : null;
+    }
+
+    public String getEffectiveKafkaConsumerGroupId() {
+        if (StringUtils.hasText(kafkaConsumerGroupId)) {
+            return kafkaConsumerGroupId;
+        }
+        return StringUtils.hasText(groupId) ? "alumnos-" + groupId : "servicio-catalogo-group";
+    }
+
+    public String getEffectiveRedisWriteNamespace() {
+        if (StringUtils.hasText(redisWriteNamespace)) {
+            return redisWriteNamespace;
+        }
+        return StringUtils.hasText(groupId) ? "alumnos:" + groupId + ":*" : null;
+    }
+
+    public boolean isProvisioned() {
+        return "PROVISIONED".equalsIgnoreCase(provisioningStatus);
+    }
+
+    public boolean isProvisioningBlocked() {
+        return StringUtils.hasText(provisioningStatus) && !isProvisioned();
+    }
+
     public String getApiBaseUrl() { return apiBaseUrl; }
     public void setApiBaseUrl(String apiBaseUrl) { this.apiBaseUrl = apiBaseUrl; }
 
