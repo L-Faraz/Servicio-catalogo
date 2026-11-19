@@ -109,6 +109,15 @@ El contrato de integracion para construir disponibilidad y validar reservas esta
 
 `servicio-turnos` consume los endpoints de lectura del catalogo con un JWT de rol `SERVICE`. La app KMP no consulta el catalogo directamente para disponibilidad.
 
+## Documentacion
+
+- [Arquitectura](docs/architecture.md)
+- [Modelo de datos](docs/data-model.md)
+- [Estrategia de sincronizacion](docs/sync-strategy.md)
+- [Idempotencia y recuperacion](docs/idempotency-and-recovery.md)
+- [Seguridad](docs/security.md)
+- [Pruebas](docs/tests.md)
+
 ## Pruebas
 
 ```bash
