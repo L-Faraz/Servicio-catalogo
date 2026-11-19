@@ -27,7 +27,7 @@ public class CatalogReconciliationJob {
             initialDelayString = "${catedra.integration.reconciliation-initial-delay-ms:30000}"
     )
     public void reconcile() {
-        if (!properties.isConfigured()) {
+        if (!properties.isConfigured() || properties.isProvisioningBlocked()) {
             return;
         }
 

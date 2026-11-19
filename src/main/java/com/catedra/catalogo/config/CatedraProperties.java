@@ -24,6 +24,10 @@ public class CatedraProperties {
     private boolean reconciliationEnabled = true;
     private long reconciliationIntervalMs = 60000;
     private long reconciliationInitialDelayMs = 30000;
+    private long processedEventsRetentionDays = 7;
+    private boolean processedEventsCleanupEnabled = true;
+    private long processedEventsCleanupIntervalMs = 3600000;
+    private long processedEventsCleanupInitialDelayMs = 60000;
     private String provisioningStatus;
 
     public boolean isConfigured() {
@@ -108,6 +112,18 @@ public class CatedraProperties {
 
     public long getReconciliationInitialDelayMs() { return reconciliationInitialDelayMs; }
     public void setReconciliationInitialDelayMs(long reconciliationInitialDelayMs) { this.reconciliationInitialDelayMs = reconciliationInitialDelayMs; }
+
+    public long getProcessedEventsRetentionDays() { return processedEventsRetentionDays; }
+    public void setProcessedEventsRetentionDays(long processedEventsRetentionDays) { this.processedEventsRetentionDays = processedEventsRetentionDays; }
+
+    public boolean isProcessedEventsCleanupEnabled() { return processedEventsCleanupEnabled; }
+    public void setProcessedEventsCleanupEnabled(boolean processedEventsCleanupEnabled) { this.processedEventsCleanupEnabled = processedEventsCleanupEnabled; }
+
+    public long getProcessedEventsCleanupIntervalMs() { return processedEventsCleanupIntervalMs; }
+    public void setProcessedEventsCleanupIntervalMs(long processedEventsCleanupIntervalMs) { this.processedEventsCleanupIntervalMs = processedEventsCleanupIntervalMs; }
+
+    public long getProcessedEventsCleanupInitialDelayMs() { return processedEventsCleanupInitialDelayMs; }
+    public void setProcessedEventsCleanupInitialDelayMs(long processedEventsCleanupInitialDelayMs) { this.processedEventsCleanupInitialDelayMs = processedEventsCleanupInitialDelayMs; }
 
     public String getProvisioningStatus() { return provisioningStatus; }
     public void setProvisioningStatus(String provisioningStatus) { this.provisioningStatus = provisioningStatus; }
