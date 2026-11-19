@@ -27,6 +27,15 @@ spring:
     problemdetails:
       enabled: true
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
 app:
   security:
     jwt:
