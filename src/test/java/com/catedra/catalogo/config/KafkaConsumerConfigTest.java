@@ -22,7 +22,8 @@ class KafkaConsumerConfigTest {
 
         assertThat(factory.getConfigurationProperties())
                 .containsEntry(ConsumerConfig.GROUP_ID_CONFIG, "alumnos-proyecto-juan-perez")
-                .containsEntry(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "PLAINTEXT");
+                .containsEntry(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "PLAINTEXT")
+                .doesNotContainKey(SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG);
     }
 
     @Test

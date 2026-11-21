@@ -99,19 +99,24 @@ public class KafkaConsumerConfig {
 
     private Map<String, Object> securityConfig() {
         Map<String, Object> config = new HashMap<>();
-        config.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, properties.getKafkaSecurityProtocol());
+        String protocol = properties.getKafkaSecurityProtocol();
+        config.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, protocol);
 
-        putIfPresent(config, SaslConfigs.SASL_MECHANISM, properties.getKafkaSaslMechanism());
-        putIfPresent(config, SaslConfigs.SASL_JAAS_CONFIG, properties.getKafkaSaslJaasConfig());
-        putIfPresent(config, SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, properties.getKafkaSslTruststoreLocation());
-        putIfPresent(config, SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, properties.getKafkaSslTruststorePassword());
-        putIfPresent(config, SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG, properties.getKafkaSslTruststoreType());
-        putIfPresent(config, SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, properties.getKafkaSslKeystoreLocation());
-        putIfPresent(config, SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG, properties.getKafkaSslKeystorePassword());
-        putIfPresent(config, SslConfigs.SSL_KEYSTORE_TYPE_CONFIG, properties.getKafkaSslKeystoreType());
-        putIfPresent(config, SslConfigs.SSL_KEY_PASSWORD_CONFIG, properties.getKafkaSslKeyPassword());
-        putIfPresent(config, SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG,
-                properties.getKafkaSslEndpointIdentificationAlgorithm());
+        if (protocol != null && protocol.contains("SASL")) {
+            putIfPresent(config, SaslConfigs.SASL_MECHANISM, properties.getKafkaSaslMechanism());
+            putIfPresent(config, SaslConfigs.SASL_JAAS_CONFIG, properties.getKafkaSaslJaasConfig());
+        }
+        if (protocol != null && protocol.contains("SSL")) {
+            putIfPresent(config, SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, properties.getKafkaSslTruststoreLocation());
+            putIfPresent(config, SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, properties.getKafkaSslTruststorePassword());
+            putIfPresent(config, SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG, properties.getKafkaSslTruststoreType());
+            putIfPresent(config, SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, properties.getKafkaSslKeystoreLocation());
+            putIfPresent(config, SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG, properties.getKafkaSslKeystorePassword());
+            putIfPresent(config, SslConfigs.SSL_KEYSTORE_TYPE_CONFIG, properties.getKafkaSslKeystoreType());
+            putIfPresent(config, SslConfigs.SSL_KEY_PASSWORD_CONFIG, properties.getKafkaSslKeyPassword());
+            putIfPresent(config, SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG,
+                    properties.getKafkaSslEndpointIdentificationAlgorithm());
+        }
 
         return config;
     }
