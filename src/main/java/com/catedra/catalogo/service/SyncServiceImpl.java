@@ -88,6 +88,26 @@ public class SyncServiceImpl implements SyncService {
     }
 
     @Override
+    public boolean isLocalCopyConsistent() {
+        Long localVersion = getLocalVersion();
+        if (localVersion == null) {
+            return false;
+        }
+        return categoryRepository.count() > 0
+                || professionalRepository.count() > 0
+                || weeklyScheduleRepository.count() > 0;
+    }
+
+    @Override
+    public boolean isVersionApplied(Long version) {
+        if (version == null) {
+            return false;
+        }
+        Long localVersion = getLocalVersion();
+        return localVersion != null && localVersion >= version;
+    }
+
+    @Override
     public SyncStatusDTO getStatus() {
         Long localVersion = getLocalVersion();
         Long currentVersion = null;
@@ -119,17 +139,68 @@ public class SyncServiceImpl implements SyncService {
 
     private CatalogSnapshotDTO doSnapshot() {
         CatalogSnapshotDTO snapshot = catedraApiClient.fetchSnapshot();
+        validateSnapshot(snapshot);
 
+        transactionTemplate.executeWithoutResult(status -> applySnapshot(snapshot));
+        log.info("Snapshot aplicado. Version local: {}", snapshot.snapshotVersion());
+        return snapshot;
+    }
+
+    private void validateSnapshot(CatalogSnapshotDTO snapshot) {
         if (snapshot == null) {
             throw new IllegalStateException("La catedra devolvio un snapshot vacio");
         }
         if (snapshot.snapshotVersion() == null) {
             throw new IllegalStateException("El snapshot no incluye snapshotVersion");
         }
+        if (snapshot.generatedAt() == null) {
+            throw new IllegalStateException("El snapshot no incluye generatedAt");
+        }
+        if (snapshot.professionalCategories() == null
+                || snapshot.professionals() == null
+                || snapshot.weeklySchedules() == null) {
+            throw new IllegalStateException("El snapshot no incluye todas las colecciones obligatorias");
+        }
 
-        transactionTemplate.executeWithoutResult(status -> applySnapshot(snapshot));
-        log.info("Snapshot aplicado. Version local: {}", snapshot.snapshotVersion());
-        return snapshot;
+        for (CategorySnapshotDTO dto : snapshot.professionalCategories()) {
+            requireId(dto.id(), "categoria");
+            requireText(dto.name(), "nombre de categoria", dto.id());
+        }
+        for (ProfessionalSnapshotDTO dto : snapshot.professionals()) {
+            requireId(dto.id(), "profesional");
+            requireId(dto.categoryId(), "categoria del profesional", dto.id());
+            requireText(dto.firstName(), "nombre del profesional", dto.id());
+            requireText(dto.lastName(), "apellido del profesional", dto.id());
+        }
+        for (WeeklyScheduleSnapshotDTO dto : snapshot.weeklySchedules()) {
+            requireId(dto.id(), "horario");
+            requireId(dto.professionalId(), "profesional del horario", dto.id());
+            parseDayOfWeek(dto.dayOfWeek());
+            if (dto.startTime() == null || dto.endTime() == null) {
+                throw new IllegalStateException("El horario " + dto.id() + " no incluye horarios de inicio/fin");
+            }
+            if (dto.slotDurationMinutes() == null || dto.slotDurationMinutes() <= 0) {
+                throw new IllegalStateException("El horario " + dto.id() + " tiene slotDurationMinutes invalido");
+            }
+        }
+    }
+
+    private void requireId(Long id, String label) {
+        if (id == null) {
+            throw new IllegalStateException("El snapshot incluye una " + label + " sin id");
+        }
+    }
+
+    private void requireId(Long id, String label, Long ownerId) {
+        if (id == null) {
+            throw new IllegalStateException("La entidad " + ownerId + " no incluye " + label);
+        }
+    }
+
+    private void requireText(String value, String label, Long ownerId) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException("La entidad " + ownerId + " no incluye " + label);
+        }
     }
 
     private void applySnapshot(CatalogSnapshotDTO snapshot) {
@@ -183,13 +254,13 @@ public class SyncServiceImpl implements SyncService {
             return;
         }
 
-        Long localVersion = getLocalVersion();
-        if (localVersion == null) {
-            log.info("No hay version local aplicada. Ejecutando snapshot.");
+        if (!isLocalCopyConsistent()) {
+            log.warn("Copia local ausente o incompleta. Ejecutando snapshot.");
             doSnapshot();
             return;
         }
 
+        Long localVersion = getLocalVersion();
         if (localVersion.equals(redisVersion)) {
             log.info("El catalogo ya esta en la ultima version ({}).", localVersion);
             return;
@@ -233,12 +304,20 @@ public class SyncServiceImpl implements SyncService {
     }
 
     private void applyVersion(long version, CatalogChangeDTO change) {
-        if (change.version() != null && !change.version().equals(version)) {
+        if (change == null) {
+            throw new CatalogDiscontinuityException("El cambio " + version + " esta vacio");
+        }
+        if (!Long.valueOf(version).equals(change.version())) {
             throw new CatalogDiscontinuityException(
                     "La version del cambio (" + change.version() + ") no coincide con la clave (" + version + ")");
         }
-
         CatalogChangeDTO.ChangeLists lists = change.changes();
+        if (lists == null || lists.professionalCategories() == null
+                || lists.professionals() == null || lists.weeklySchedules() == null) {
+            throw new CatalogDiscontinuityException(
+                    "El cambio " + version + " no incluye todas las listas obligatorias");
+        }
+
         List<CategorySnapshotDTO> categories = loadCategories(lists);
         List<ProfessionalSnapshotDTO> professionals = loadProfessionals(lists);
         List<WeeklyScheduleSnapshotDTO> schedules = loadSchedules(lists);
@@ -259,6 +338,9 @@ public class SyncServiceImpl implements SyncService {
 
         List<CategorySnapshotDTO> result = new ArrayList<>();
         for (Long id : lists.professionalCategories()) {
+            if (id == null) {
+                throw new CatalogDiscontinuityException("El cambio incluye una categoria sin id");
+            }
             String json = redisSyncRepository.getEntityFromHash(CATEGORIES_HASH, id);
             if (json == null) {
                 throw new CatalogDiscontinuityException("Falta la categoria " + id + " en Redis");
@@ -275,6 +357,9 @@ public class SyncServiceImpl implements SyncService {
 
         List<ProfessionalSnapshotDTO> result = new ArrayList<>();
         for (Long id : lists.professionals()) {
+            if (id == null) {
+                throw new CatalogDiscontinuityException("El cambio incluye un profesional sin id");
+            }
             String json = redisSyncRepository.getEntityFromHash(PROFESSIONALS_HASH, id);
             if (json == null) {
                 throw new CatalogDiscontinuityException("Falta el profesional " + id + " en Redis");
@@ -291,6 +376,9 @@ public class SyncServiceImpl implements SyncService {
 
         List<WeeklyScheduleSnapshotDTO> result = new ArrayList<>();
         for (Long id : lists.weeklySchedules()) {
+            if (id == null) {
+                throw new CatalogDiscontinuityException("El cambio incluye un horario sin id");
+            }
             String json = redisSyncRepository.getEntityFromHash(WEEKLY_SCHEDULES_HASH, id);
             if (json == null) {
                 throw new CatalogDiscontinuityException("Falta el horario " + id + " en Redis");

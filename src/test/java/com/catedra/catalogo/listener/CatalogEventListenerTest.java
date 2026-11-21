@@ -1,5 +1,6 @@
 package com.catedra.catalogo.listener;
 
+import com.catedra.catalogo.config.CatedraProperties;
 import com.catedra.catalogo.domain.ProcessedCatalogEvent;
 import com.catedra.catalogo.repository.ProcessedCatalogEventRepository;
 import com.catedra.catalogo.service.SyncService;
@@ -10,10 +11,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.kafka.support.Acknowledgment;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -33,31 +37,71 @@ class CatalogEventListenerTest {
     @Mock
     private Acknowledgment acknowledgment;
 
+    private CatedraProperties properties;
     private CatalogEventListener listener;
 
     @BeforeEach
     void setUp() {
+        properties = new CatedraProperties();
         listener = new CatalogEventListener(
                 syncService,
                 processedEventRepository,
+                properties,
                 new ObjectMapper().findAndRegisterModules()
         );
     }
 
     @Test
-    void validEventSynchronizesAndAcknowledges() {
+    void validEventSynchronizesAndAcknowledgesOnlyAfterTargetVersionIsApplied() {
         when(processedEventRepository.existsById("catalog-event-7")).thenReturn(false);
+        when(syncService.isVersionApplied(7L)).thenReturn(true);
 
         listener.handleCatalogEvent(record(VALID_EVENT), acknowledgment);
 
         verify(syncService).processIncrementalSync();
+        verify(syncService).isVersionApplied(7L);
         verify(processedEventRepository).save(any(ProcessedCatalogEvent.class));
+        verify(acknowledgment).acknowledge();
+    }
+
+    @Test
+    void eventIsNotAcknowledgedWhenTargetVersionWasNotApplied() {
+        when(processedEventRepository.existsById(anyString())).thenReturn(false);
+        when(syncService.isVersionApplied(7L)).thenReturn(false);
+
+        assertThatThrownBy(() -> listener.handleCatalogEvent(record(VALID_EVENT), acknowledgment))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("no alcanzo la version 7");
+
+        verify(acknowledgment, never()).acknowledge();
+        verify(processedEventRepository, never()).save(any());
+    }
+
+    @Test
+    void concurrentDuplicateSaveIsTreatedAsProcessed() {
+        when(processedEventRepository.existsById(anyString())).thenReturn(false);
+        when(syncService.isVersionApplied(7L)).thenReturn(true);
+        when(processedEventRepository.save(any(ProcessedCatalogEvent.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate"));
+
+        listener.handleCatalogEvent(record(VALID_EVENT), acknowledgment);
+
         verify(acknowledgment).acknowledge();
     }
 
     @Test
     void duplicateEventDoesNotSynchronize() {
         when(processedEventRepository.existsById("catalog-event-7")).thenReturn(true);
+
+        listener.handleCatalogEvent(record(VALID_EVENT), acknowledgment);
+
+        verify(syncService, never()).processIncrementalSync();
+        verify(acknowledgment).acknowledge();
+    }
+
+    @Test
+    void blockedProvisioningIgnoresEventWithoutSynchronizing() {
+        properties.setProvisioningStatus("PENDING");
 
         listener.handleCatalogEvent(record(VALID_EVENT), acknowledgment);
 
@@ -79,6 +123,18 @@ class CatalogEventListenerTest {
     }
 
     @Test
+    void eventWithoutNewVersionIsIgnored() {
+        String payload = """
+                {"eventId":"other","eventType":"CatalogUpdated","schemaVersion":1}
+                """;
+
+        listener.handleCatalogEvent(record(payload), acknowledgment);
+
+        verify(syncService, never()).processIncrementalSync();
+        verify(acknowledgment).acknowledge();
+    }
+
+    @Test
     void invalidJsonIsIgnoredAndAcknowledged() {
         listener.handleCatalogEvent(record("{not-json"), acknowledgment);
 
@@ -89,11 +145,10 @@ class CatalogEventListenerTest {
     @Test
     void syncFailureDoesNotAcknowledge() {
         when(processedEventRepository.existsById(anyString())).thenReturn(false);
-        org.mockito.Mockito.doThrow(new IllegalStateException("sync failed"))
+        doThrow(new IllegalStateException("sync failed"))
                 .when(syncService).processIncrementalSync();
 
-        org.assertj.core.api.Assertions.assertThatThrownBy(
-                () -> listener.handleCatalogEvent(record(VALID_EVENT), acknowledgment))
+        assertThatThrownBy(() -> listener.handleCatalogEvent(record(VALID_EVENT), acknowledgment))
                 .isInstanceOf(IllegalStateException.class);
 
         verify(acknowledgment, never()).acknowledge();

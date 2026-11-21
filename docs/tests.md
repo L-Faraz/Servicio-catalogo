@@ -35,13 +35,16 @@ No se necesitan PostgreSQL, Redis ni Kafka para correr la suite actual.
 | --- | --- |
 | `ServicioCatalogoApplicationTests` | El contexto Spring arranca con el perfil `test`. |
 | `CatedraApiClientTest` | URL del snapshot, bearer token, parseo del contrato y error si falta configuración. |
-| `SyncServiceImplTest` | Snapshot, snapshot sin versión, versión vieja, cambio faltante, incremental normal, versión local adelantada, Redis sin versión, fallo de Redis y versión ya actualizada. |
-| `CatalogEventListenerTest` | Evento válido, duplicado, tipo inválido, JSON inválido y fallo de sincronización sin ack. |
+| `SyncServiceImplTest` | Snapshot, validación estricta de snapshot/cambios, copia local incompleta, versión vieja, cambio faltante, incremental normal, versión local adelantada, Redis sin versión, fallo de Redis y versión ya actualizada. |
+| `CatalogEventListenerTest` | Evento válido, versión no alcanzada, deduplicación concurrente, provisioning bloqueado, duplicado, tipo inválido, JSON inválido y fallo de sincronización sin ack. |
 | `CatalogSearchIntegrationTest` | Filtros combinados, estado habilitado y disponibilidad por día y hora. |
 | `SecurityIntegrationTest` | Sin token, token inválido, token vencido, lectura con rol `USER`, prohibición de sincronización para `USER`, acceso de `SERVICE` y CORS. |
 | `CatedraPropertiesTest` | Derivación de topic, consumer group y namespace desde `groupId`; prioridad de valores explícitos; estado de provisioning. |
-| `KafkaConsumerConfigTest` | Consumer group derivado y consumer group explícito. |
-| `SyncBootstrapTest` | Snapshot inicial con provisioning listo, omisión con provisioning bloqueado y comportamiento sin `provisioningStatus`. |
+| `KafkaConsumerConfigTest` | Consumer group derivado, consumer group explícito, propagación SSL/SASL a consumer y producer, y derivación del DLT. |
+| `SyncBootstrapTest` | Snapshot inicial con provisioning listo, copia incompleta, omisión con provisioning bloqueado, independencia de Redis y comportamiento sin `provisioningStatus`. |
+| `CatalogReconciliationJobTest` | La reconciliación invoca la sincronización incremental cuando está habilitada. |
+| `CatedraRedisHealthIndicatorTest` | Health `UP`/`DOWN` con `EXISTS`, sin depender de `PING`. |
+| `ProcessedCatalogEventsCleanupJobTest` | Limpieza por retención y omisión cuando la retención no es positiva. |
 
 ## 4. Escenarios importantes cubiertos
 
@@ -50,8 +53,10 @@ No se necesitan PostgreSQL, Redis ni Kafka para correr la suite actual.
 - Recuperación por snapshot ante discontinuidad.
 - Recuperación por snapshot si Redis falla o no informa versión.
 - Recuperación por snapshot si la versión local es mayor que la remota.
-- Deduplicación por `eventId`.
-- No confirmación de offset ante fallo de sincronización.
+- Deduplicación por `eventId`, incluso con guardas concurrentes.
+- No confirmación de offset si la sincronización no alcanza `newVersion`.
+- Recuperación por snapshot si existe versión local pero faltan datos.
+- Rechazo de snapshots o cambios incompletos antes de borrar la copia local.
 - Búsqueda local con filtros por categoría, nombre, estado y disponibilidad.
 - Rechazo de accesos no autenticados y no autorizados.
 - Configuración derivada del contrato de catedra.
@@ -64,8 +69,8 @@ No se necesitan PostgreSQL, Redis ni Kafka para correr la suite actual.
 - No hay tests de rollback transaccional con fallos parciales.
 - No hay tests de contrato que validen el JSON completo del snapshot y de `CatalogUpdated` ante campos adicionales.
 - No hay tests de todos los códigos de error del `GlobalExceptionHandler`.
-- No hay pruebas de limpieza de `processed_catalog_events`, porque esa funcionalidad todavía no existe.
-- No hay pruebas de Actuator, porque la dependencia todavía no está incluida.
+- Hay pruebas unitarias de limpieza de `processed_catalog_events`; faltaría un test de integración con PostgreSQL.
+- Hay pruebas del indicador de health de Redis; no hay un test HTTP dedicado de `/actuator/health`.
 
 Estas limitaciones están alineadas con el estado actual del repositorio y deben revisarse antes de la entrega final.
 

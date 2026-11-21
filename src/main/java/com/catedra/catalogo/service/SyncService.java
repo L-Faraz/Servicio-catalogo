@@ -10,4 +10,8 @@ public interface SyncService {
     void processIncrementalSync();
 
     SyncStatusDTO getStatus();
+
+    boolean isLocalCopyConsistent();
+
+    boolean isVersionApplied(Long version);
 }

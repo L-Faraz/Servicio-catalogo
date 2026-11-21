@@ -99,7 +99,7 @@ No se usa una base compartida ni acceso directo a repositorios de otro servicio 
 - PostgreSQL externo gestionado con Flyway; `ddl-auto: none`.
 - Redis y Kafka son servicios administrados por la catedra.
 - Los valores de conexión y secretos se pasan por variables de entorno.
-- No hay contenedores en este repositorio todavía; Docker Compose queda como trabajo pendiente.
+- `compose.yaml` levanta PostgreSQL en `5433` y expone healthcheck para uso local.
 
 La configuración de integración se deriva de `CATEDRA_GROUP_ID` cuando no se informan valores explícitos:
 
@@ -117,6 +117,10 @@ Los valores explícitos tienen prioridad.
 - Kafka notifica; los datos se leen de Redis o del snapshot REST.
 - El listener solo se registra si Kafka está habilitado y existe `groupId` o un topic explícito.
 - El snapshot inicial se omite si `provisioningStatus` está informado y no es `PROVISIONED`.
+- El listener también omite eventos cuando el provisioning está bloqueado y solo confirma el offset si la versión local alcanzó `newVersion`.
+- Redis usa timeouts de conexión y comando de 2 segundos para no bloquear la reconciliación.
+- Kafka soporta `PLAINTEXT`, `SSL`, `SASL_PLAINTEXT` y `SASL_SSL` mediante variables de entorno; el cliente es propio de este servicio.
+- Tras agotar los reintentos, el evento fallido se publica en `{catalogTopic}.dlt`, configurable con `CATEDRA_KAFKA_DLT_TOPIC`.
 - La comunicación con `servicio-turnos` usa JWT de servicio; el token técnico de la catedra nunca se propaga.
 - No existe un controlador interno separado: se reutilizan los endpoints `/api/**` documentados en [`contract-catalogo-turnos.md`](contract-catalogo-turnos.md).
 

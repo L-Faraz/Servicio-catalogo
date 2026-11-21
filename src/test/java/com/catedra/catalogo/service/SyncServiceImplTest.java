@@ -75,6 +75,9 @@ class SyncServiceImplTest {
             callback.accept(null);
             return null;
         }).when(transactionTemplate).executeWithoutResult(any());
+        lenient().when(categoryRepository.count()).thenReturn(1L);
+        lenient().when(professionalRepository.count()).thenReturn(1L);
+        lenient().when(weeklyScheduleRepository.count()).thenReturn(1L);
 
         syncService = new SyncServiceImpl(
                 catedraApiClient,
@@ -270,6 +273,65 @@ class SyncServiceImplTest {
         verify(catedraApiClient, never()).fetchSnapshot();
         verify(redisSyncRepository, never()).getChangeForVersion(anyLong());
         verify(statusService).markIdle();
+    }
+
+    @Test
+    void snapshotWithoutRequiredCollectionsDoesNotDeleteLocalData() {
+        when(catedraApiClient.fetchSnapshot()).thenReturn(
+                new CatalogSnapshotDTO(7L, NOW, null, List.of(), List.of()));
+
+        assertThatThrownBy(() -> syncService.syncSnapshot())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("colecciones obligatorias");
+
+        verify(categoryRepository, never()).deleteAllInBatch();
+        verify(professionalRepository, never()).deleteAllInBatch();
+        verify(weeklyScheduleRepository, never()).deleteAllInBatch();
+        verify(statusService).markError(anyString());
+    }
+
+    @Test
+    void incompleteLocalCopyTriggersSnapshotEvenWhenVersionExists() {
+        when(redisSyncRepository.getCurrentVersion()).thenReturn(7L);
+        when(redisSyncRepository.getOldestAvailableVersion()).thenReturn(4L);
+        when(categoryRepository.count()).thenReturn(0L);
+        when(professionalRepository.count()).thenReturn(0L);
+        when(weeklyScheduleRepository.count()).thenReturn(0L);
+        when(versionRepository.findById(1L)).thenReturn(Optional.of(new CatalogVersion(6L)));
+        when(catedraApiClient.fetchSnapshot()).thenReturn(snapshot(7L));
+        doAnswer(invocation -> invocation.getArgument(0)).when(categoryRepository).save(any());
+        doAnswer(invocation -> invocation.getArgument(0)).when(professionalRepository).save(any());
+
+        syncService.processIncrementalSync();
+
+        verify(catedraApiClient).fetchSnapshot();
+        verify(redisSyncRepository, never()).getChangeForVersion(anyLong());
+    }
+
+    @Test
+    void changeWithoutRequiredListsTriggersSnapshot() {
+        when(redisSyncRepository.getCurrentVersion()).thenReturn(2L);
+        when(redisSyncRepository.getOldestAvailableVersion()).thenReturn(1L);
+        when(versionRepository.findById(1L)).thenReturn(Optional.of(new CatalogVersion(1L)));
+        when(redisSyncRepository.getChangeForVersion(2L))
+                .thenReturn("{\"version\":2,\"changes\":{\"professionalCategories\":[]}}");
+        when(catedraApiClient.fetchSnapshot()).thenReturn(snapshot(2L));
+        doAnswer(invocation -> invocation.getArgument(0)).when(categoryRepository).save(any());
+        doAnswer(invocation -> invocation.getArgument(0)).when(professionalRepository).save(any());
+
+        syncService.processIncrementalSync();
+
+        verify(catedraApiClient).fetchSnapshot();
+    }
+
+    @Test
+    void versionIsConsideredAppliedOnlyWhenLocalVersionReachesTarget() {
+        when(versionRepository.findById(1L)).thenReturn(Optional.of(new CatalogVersion(7L)));
+
+        assertThat(syncService.isVersionApplied(7L)).isTrue();
+        assertThat(syncService.isVersionApplied(6L)).isTrue();
+        assertThat(syncService.isVersionApplied(8L)).isFalse();
+        assertThat(syncService.isVersionApplied(null)).isFalse();
     }
 
     private CatalogSnapshotDTO snapshot(Long version) {

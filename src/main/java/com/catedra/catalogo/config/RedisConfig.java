@@ -1,15 +1,23 @@
 package com.catedra.catalogo.config;
 
+import io.lettuce.core.ClientOptions;
+import io.lettuce.core.SocketOptions;
+import io.lettuce.core.TimeoutOptions;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
+import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.util.StringUtils;
 
+import java.time.Duration;
+
 @Configuration
 public class RedisConfig {
+
+    private static final Duration REDIS_TIMEOUT = Duration.ofSeconds(2);
 
     @Bean
     public RedisConnectionFactory redisConnectionFactory(CatedraProperties properties) {
@@ -30,7 +38,19 @@ public class RedisConfig {
             redisConfig.setPassword(properties.getRedisPassword());
         }
 
-        return new LettuceConnectionFactory(redisConfig);
+        SocketOptions socketOptions = SocketOptions.builder()
+                .connectTimeout(REDIS_TIMEOUT)
+                .build();
+        ClientOptions clientOptions = ClientOptions.builder()
+                .socketOptions(socketOptions)
+                .timeoutOptions(TimeoutOptions.enabled(REDIS_TIMEOUT))
+                .build();
+        LettuceClientConfiguration clientConfig = LettuceClientConfiguration.builder()
+                .commandTimeout(REDIS_TIMEOUT)
+                .clientOptions(clientOptions)
+                .build();
+
+        return new LettuceConnectionFactory(redisConfig, clientConfig);
     }
 
     @Bean

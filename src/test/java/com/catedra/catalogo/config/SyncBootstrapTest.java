@@ -1,6 +1,5 @@
 package com.catedra.catalogo.config;
 
-import com.catedra.catalogo.repository.CatalogVersionRepository;
 import com.catedra.catalogo.service.SyncService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,39 +15,58 @@ class SyncBootstrapTest {
 
     @Mock
     private SyncService syncService;
-    @Mock
-    private CatalogVersionRepository versionRepository;
 
     @Test
     void skipsInitialSnapshotWhileProvisioningIsNotCompleted() {
         CatedraProperties properties = configuredProperties();
         properties.setProvisioningStatus("PENDING");
 
-        new SyncBootstrap(syncService, versionRepository, properties).run(null);
+        new SyncBootstrap(syncService, properties).run(null);
 
         verify(syncService, never()).syncSnapshot();
-        verify(versionRepository, never()).count();
+        verify(syncService, never()).isLocalCopyConsistent();
     }
 
     @Test
-    void runsInitialSnapshotWhenProvisionedAndLocalDatabaseIsEmpty() {
+    void runsInitialSnapshotWhenProvisionedAndLocalCopyIsIncomplete() {
         CatedraProperties properties = configuredProperties();
         properties.setProvisioningStatus("PROVISIONED");
-        when(versionRepository.count()).thenReturn(0L);
+        when(syncService.isLocalCopyConsistent()).thenReturn(false);
 
-        new SyncBootstrap(syncService, versionRepository, properties).run(null);
+        new SyncBootstrap(syncService, properties).run(null);
 
         verify(syncService).syncSnapshot();
     }
 
     @Test
-    void runsInitialSnapshotWhenProvisioningStatusIsNotInformed() {
+    void skipsInitialSnapshotWhenLocalCopyIsComplete() {
         CatedraProperties properties = configuredProperties();
-        when(versionRepository.count()).thenReturn(0L);
+        when(syncService.isLocalCopyConsistent()).thenReturn(true);
 
-        new SyncBootstrap(syncService, versionRepository, properties).run(null);
+        new SyncBootstrap(syncService, properties).run(null);
+
+        verify(syncService, never()).syncSnapshot();
+    }
+
+    @Test
+    void doesNotRequireRedisToRunTheInitialSnapshot() {
+        CatedraProperties properties = configuredProperties();
+        properties.setRedisHost(null);
+        when(syncService.isLocalCopyConsistent()).thenReturn(false);
+
+        new SyncBootstrap(syncService, properties).run(null);
 
         verify(syncService).syncSnapshot();
+    }
+
+    @Test
+    void skipsSnapshotWhenApiConfigurationIsMissing() {
+        CatedraProperties properties = configuredProperties();
+        properties.setApiBaseUrl(null);
+
+        new SyncBootstrap(syncService, properties).run(null);
+
+        verify(syncService, never()).syncSnapshot();
     }
 
     private CatedraProperties configuredProperties() {
