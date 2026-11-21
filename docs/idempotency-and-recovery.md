@@ -17,7 +17,8 @@
 | Transacciones | `TransactionTemplate` | Snapshot e incrementales son atómicos por unidad de trabajo. |
 | Control de versión | `catalog_versions.current_version` | Permite detectar atraso, adelanto y discontinuidad. |
 | Validación de cambios | `CatalogDiscontinuityException` | Fuerza snapshot ante datos inconclusos o inconsistentes. |
-| Ack manual | `MANUAL_IMMEDIATE` | El offset se confirma solo después de persistir. |
+| Validación de snapshot | `SyncServiceImpl.validateSnapshot` | Evita borrar la copia local si faltan colecciones, ids o campos obligatorios. |
+| Ack manual | `MANUAL_IMMEDIATE` | El offset se confirma solo después de persistir y de verificar que la versión local alcanzó `newVersion`. |
 | Reconciliación | Job periódico | Recupera notificaciones perdidas. |
 
 ## 3. Casos cubiertos
@@ -36,8 +37,10 @@
 | JSON inválido desde Redis | Discontinuidad y snapshot REST. |
 | `dayOfWeek` inválido | Discontinuidad y snapshot REST. |
 | Falla el guardado del evento procesado | No se confirma el offset; el evento puede repetirse y volver a intentarse. |
-| Reinicio de la aplicación | `SyncBootstrap` decide snapshot solo si no hay versión local y el provisioning está listo. |
-| Provisioning no listo | El snapshot inicial se omite. |
+| Reinicio de la aplicación | `SyncBootstrap` decide snapshot si falta versión o la copia está incompleta, y solo si el provisioning está listo. |
+| Provisioning no listo | Se omiten el snapshot inicial y el procesamiento de eventos Kafka. |
+| Evento con `newVersion` no aplicada | No se confirma el offset; el evento se reintenta. |
+| Snapshot con colecciones o campos faltantes | Se rechaza antes de borrar la copia local. |
 | Llamadas GET de consulta | Son idempotentes y pueden reintentarse. |
 
 ## 4. Flujo de un evento duplicado
@@ -56,6 +59,8 @@ sequenceDiagram
   else no existe
     L->>S: processIncrementalSync()
     S-->>L: exito
+    L->>S: isVersionApplied(newVersion)
+    S-->>L: true
     L->>DB: save(E)
     L-->>K: ack
   end
@@ -63,23 +68,21 @@ sequenceDiagram
 
 ## 5. Reintentos
 
-El contenedor Kafka usa `DefaultErrorHandler` con `FixedBackOff(1000 ms, 3 reintentos)`.
+El contenedor Kafka usa `DefaultErrorHandler` con `FixedBackOff` configurable (`CATEDRA_KAFKA_RETRY_INITIAL_MS`, `CATEDRA_KAFKA_MAX_RETRIES`).
 
 - Si la sincronización falla, no se confirma el offset y se reintenta.
-- No hay dead letter topic.
-- No hay control de reintentos por tipo de error.
-- Agotados los reintentos, el comportamiento depende del recoverer por defecto de Spring Kafka; no existe una recuperación funcional explícita en este repositorio.
-
-Este punto está pendiente como mejora.
+- Agotados los reintentos, `DeadLetterPublishingRecoverer` publica el registro en `{catalogTopic}.dlt`, configurable con `CATEDRA_KAFKA_DLT_TOPIC`.
+- El DLT conserva la partición original para facilitar el diagnóstico.
+- No hay control de reintentos por tipo de error; la política es uniforme para todos los fallos de procesamiento.
 
 ## 6. Limitaciones actuales
 
-- `processed_catalog_events` crece sin límite; no hay job de limpieza ni índice por `processed_at`.
-- No se detecta una base local inconsistente si existe una fila en `catalog_versions` pero faltan datos en las tablas de catálogo.
+- `processed_catalog_events` tiene índice y job de limpieza configurable, pero la retención depende de que el job esté habilitado.
+- Se detecta una copia local vacía/incompleta cuando existe versión local pero no hay entidades; no se valida integridad referencial más allá de las FKs de PostgreSQL.
 - El estado de sincronización y el último error son en memoria; se pierden al reiniciar.
 - No hay métricas ni alertas de sincronización.
-- No hay dead letter topic ni política de reintentos por error funcional.
-- La reconciliación y los endpoints manuales no verifican `provisioningStatus`; solo lo hace el bootstrap.
+- Hay DLT y backoff configurable, pero no se distingue entre errores funcionales y técnicos para aplicar políticas distintas.
+- La reconciliación, los endpoints manuales, el bootstrap y el listener verifican `provisioningStatus`.
 - Las claves Redis de lectura están hardcodeadas; `redisReadNamespace` no se aplica.
 - No hay tests con Redis o Kafka reales.
 

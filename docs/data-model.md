@@ -6,7 +6,7 @@ Todas las tablas de este documento pertenecen a `Servicio-catalogo`. No hay tabl
 
 La catedra es la fuente autoritativa externa, pero este servicio solo consume su API REST, Redis y Kafka. No accede a bases de la catedra.
 
-La base local se administra con Flyway. La migración actual es `V1__init_catalog.sql` y Hibernate está configurado con `ddl-auto: none`.
+La base local se administra con Flyway. Las migraciones actuales son `V1__init_catalog.sql` y `V2__index_processed_catalog_events.sql`; Hibernate está configurado con `ddl-auto: none`.
 
 ## 2. Diagrama
 
@@ -83,13 +83,13 @@ Profesionales de la copia local.
 | `id` | `bigint` | PK | ID de la catedra. |
 | `first_name` | `varchar(255)` | NOT NULL | Nombre. |
 | `last_name` | `varchar(255)` | NOT NULL | Apellido. |
-| `email` | `varchar(255)` | nullable | Correo opcional. |
+| `email` | `varchar(255)` | nullable | Columna extensible local; no viene en el contrato de catedra y hoy no se informa. |
 | `category_id` | `bigint` | FK a `categories(id)` | Categoría vigente. |
 | `enabled` | `boolean` | NOT NULL | Alta lógica. |
 | `created_at` | `timestamptz` | NOT NULL | Fecha informada por la catedra. |
 | `updated_at` | `timestamptz` | NOT NULL | Última actualización informada por la catedra. |
 
-Índice: `idx_professionals_category` sobre `category_id`.
+Índice: `idx_professionals_category` sobre `category_id`. El campo `email` se conserva por compatibilidad con la migración inicial, pero no participa en la sincronización ni en las consultas.
 
 ### `weekly_schedules`
 
@@ -130,7 +130,7 @@ Deduplicación funcional de eventos Kafka.
 | `event_id` | `varchar(255)` | PK | `eventId` del evento `CatalogUpdated`. |
 | `processed_at` | `timestamptz` | NOT NULL | Momento en que se registró. |
 
-No hay job de limpieza ni índice por `processed_at` en la migración actual.
+`V2__index_processed_catalog_events.sql` crea un índice por `processed_at`. `ProcessedCatalogEventsCleanupJob` elimina registros anteriores a `now - processed-events-retention-days` y se puede desactivar con `CATEDRA_PROCESSED_EVENTS_CLEANUP_ENABLED=false`.
 
 ## 4. Datos que no se almacenan aquí
 
