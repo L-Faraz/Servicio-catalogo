@@ -7,6 +7,8 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import java.nio.charset.StandardCharsets;
+
 @Component("redisHealthIndicator")
 public class CatedraRedisHealthIndicator implements HealthIndicator {
 
@@ -27,11 +29,10 @@ public class CatedraRedisHealthIndicator implements HealthIndicator {
         RedisConnection connection = null;
         try {
             connection = connectionFactory.getConnection();
-            String response = connection.ping();
-            if ("PONG".equalsIgnoreCase(response)) {
-                return Health.up().build();
-            }
-            return Health.down().withDetail("response", response).build();
+            Boolean versionKeyPresent = connection.keyCommands()
+                    .exists("catedra:sync:current-version".getBytes(StandardCharsets.UTF_8));
+            String status = Boolean.TRUE.equals(versionKeyPresent) ? "connected" : "connected-no-version-key";
+            return Health.up().withDetail("status", status).build();
         } catch (Exception exception) {
             return Health.down(exception).build();
         } finally {

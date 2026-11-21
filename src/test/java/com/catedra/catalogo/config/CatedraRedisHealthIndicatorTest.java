@@ -1,6 +1,7 @@
 package com.catedra.catalogo.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -10,6 +11,7 @@ import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.Status;
 import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.connection.RedisKeyCommands;
 
 class CatedraRedisHealthIndicatorTest {
 
@@ -26,31 +28,39 @@ class CatedraRedisHealthIndicatorTest {
     }
 
     @Test
-    void reportsUpWhenRedisRespondsToPing() {
+    void reportsUpWhenRedisAllowsReadingVersionKey() {
         CatedraProperties properties = mock(CatedraProperties.class);
         RedisConnectionFactory connectionFactory = mock(RedisConnectionFactory.class);
         RedisConnection connection = mock(RedisConnection.class);
+        RedisKeyCommands keyCommands = mock(RedisKeyCommands.class);
         when(properties.getRedisHost()).thenReturn("redis.catedra.local");
         when(connectionFactory.getConnection()).thenReturn(connection);
-        when(connection.ping()).thenReturn("PONG");
+        when(connection.keyCommands()).thenReturn(keyCommands);
+        when(keyCommands.exists(any(byte[].class))).thenReturn(true);
         CatedraRedisHealthIndicator indicator = new CatedraRedisHealthIndicator(properties, connectionFactory);
 
         Health health = indicator.health();
 
         assertThat(health.getStatus()).isEqualTo(Status.UP);
+        assertThat(health.getDetails()).containsEntry("status", "connected");
         verify(connection).close();
     }
 
     @Test
-    void reportsDownWhenRedisPingFails() {
+    void reportsDownWhenRedisReadIsDenied() {
         CatedraProperties properties = mock(CatedraProperties.class);
         RedisConnectionFactory connectionFactory = mock(RedisConnectionFactory.class);
+        RedisConnection connection = mock(RedisConnection.class);
+        RedisKeyCommands keyCommands = mock(RedisKeyCommands.class);
         when(properties.getRedisHost()).thenReturn("redis.catedra.local");
-        when(connectionFactory.getConnection()).thenThrow(new IllegalStateException("sin conexion"));
+        when(connectionFactory.getConnection()).thenReturn(connection);
+        when(connection.keyCommands()).thenReturn(keyCommands);
+        when(keyCommands.exists(any(byte[].class))).thenThrow(new IllegalStateException("sin permisos"));
         CatedraRedisHealthIndicator indicator = new CatedraRedisHealthIndicator(properties, connectionFactory);
 
         Health health = indicator.health();
 
         assertThat(health.getStatus()).isEqualTo(Status.DOWN);
+        verify(connection).close();
     }
 }
