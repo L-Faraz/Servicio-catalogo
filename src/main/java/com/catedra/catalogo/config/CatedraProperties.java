@@ -20,6 +20,20 @@ public class CatedraProperties {
     private String kafkaBootstrapServers;
     private String kafkaConsumerGroupId;
     private String kafkaCatalogTopic;
+    private String kafkaDltTopic;
+    private String kafkaSecurityProtocol = "PLAINTEXT";
+    private String kafkaSaslMechanism;
+    private String kafkaSaslJaasConfig;
+    private String kafkaSslTruststoreLocation;
+    private String kafkaSslTruststorePassword;
+    private String kafkaSslTruststoreType = "JKS";
+    private String kafkaSslKeystoreLocation;
+    private String kafkaSslKeystorePassword;
+    private String kafkaSslKeystoreType = "JKS";
+    private String kafkaSslKeyPassword;
+    private String kafkaSslEndpointIdentificationAlgorithm;
+    private long kafkaRetryInitialMs = 1000;
+    private long kafkaMaxRetries = 3;
     private boolean kafkaEnabled = true;
     private boolean reconciliationEnabled = true;
     private long reconciliationIntervalMs = 60000;
@@ -31,9 +45,11 @@ public class CatedraProperties {
     private String provisioningStatus;
 
     public boolean isConfigured() {
-        return StringUtils.hasText(apiBaseUrl)
-                && StringUtils.hasText(jwtToken)
-                && StringUtils.hasText(redisHost);
+        return isSnapshotConfigured() && StringUtils.hasText(redisHost);
+    }
+
+    public boolean isSnapshotConfigured() {
+        return StringUtils.hasText(apiBaseUrl) && StringUtils.hasText(jwtToken);
     }
 
     public String getEffectiveKafkaCatalogTopic() {
@@ -48,6 +64,14 @@ public class CatedraProperties {
             return kafkaConsumerGroupId;
         }
         return StringUtils.hasText(groupId) ? "alumnos-" + groupId : "servicio-catalogo-group";
+    }
+
+    public String getEffectiveKafkaDltTopic() {
+        if (StringUtils.hasText(kafkaDltTopic)) {
+            return kafkaDltTopic;
+        }
+        String catalogTopic = getEffectiveKafkaCatalogTopic();
+        return StringUtils.hasText(catalogTopic) ? catalogTopic + ".dlt" : "catedra.catalog.dlt";
     }
 
     public String getEffectiveRedisWriteNamespace() {
@@ -100,6 +124,48 @@ public class CatedraProperties {
 
     public String getKafkaCatalogTopic() { return kafkaCatalogTopic; }
     public void setKafkaCatalogTopic(String kafkaCatalogTopic) { this.kafkaCatalogTopic = kafkaCatalogTopic; }
+
+    public String getKafkaDltTopic() { return kafkaDltTopic; }
+    public void setKafkaDltTopic(String kafkaDltTopic) { this.kafkaDltTopic = kafkaDltTopic; }
+
+    public String getKafkaSecurityProtocol() { return kafkaSecurityProtocol; }
+    public void setKafkaSecurityProtocol(String kafkaSecurityProtocol) { this.kafkaSecurityProtocol = kafkaSecurityProtocol; }
+
+    public String getKafkaSaslMechanism() { return kafkaSaslMechanism; }
+    public void setKafkaSaslMechanism(String kafkaSaslMechanism) { this.kafkaSaslMechanism = kafkaSaslMechanism; }
+
+    public String getKafkaSaslJaasConfig() { return kafkaSaslJaasConfig; }
+    public void setKafkaSaslJaasConfig(String kafkaSaslJaasConfig) { this.kafkaSaslJaasConfig = kafkaSaslJaasConfig; }
+
+    public String getKafkaSslTruststoreLocation() { return kafkaSslTruststoreLocation; }
+    public void setKafkaSslTruststoreLocation(String kafkaSslTruststoreLocation) { this.kafkaSslTruststoreLocation = kafkaSslTruststoreLocation; }
+
+    public String getKafkaSslTruststorePassword() { return kafkaSslTruststorePassword; }
+    public void setKafkaSslTruststorePassword(String kafkaSslTruststorePassword) { this.kafkaSslTruststorePassword = kafkaSslTruststorePassword; }
+
+    public String getKafkaSslTruststoreType() { return kafkaSslTruststoreType; }
+    public void setKafkaSslTruststoreType(String kafkaSslTruststoreType) { this.kafkaSslTruststoreType = kafkaSslTruststoreType; }
+
+    public String getKafkaSslKeystoreLocation() { return kafkaSslKeystoreLocation; }
+    public void setKafkaSslKeystoreLocation(String kafkaSslKeystoreLocation) { this.kafkaSslKeystoreLocation = kafkaSslKeystoreLocation; }
+
+    public String getKafkaSslKeystorePassword() { return kafkaSslKeystorePassword; }
+    public void setKafkaSslKeystorePassword(String kafkaSslKeystorePassword) { this.kafkaSslKeystorePassword = kafkaSslKeystorePassword; }
+
+    public String getKafkaSslKeystoreType() { return kafkaSslKeystoreType; }
+    public void setKafkaSslKeystoreType(String kafkaSslKeystoreType) { this.kafkaSslKeystoreType = kafkaSslKeystoreType; }
+
+    public String getKafkaSslKeyPassword() { return kafkaSslKeyPassword; }
+    public void setKafkaSslKeyPassword(String kafkaSslKeyPassword) { this.kafkaSslKeyPassword = kafkaSslKeyPassword; }
+
+    public String getKafkaSslEndpointIdentificationAlgorithm() { return kafkaSslEndpointIdentificationAlgorithm; }
+    public void setKafkaSslEndpointIdentificationAlgorithm(String value) { this.kafkaSslEndpointIdentificationAlgorithm = value; }
+
+    public long getKafkaRetryInitialMs() { return kafkaRetryInitialMs; }
+    public void setKafkaRetryInitialMs(long kafkaRetryInitialMs) { this.kafkaRetryInitialMs = kafkaRetryInitialMs; }
+
+    public long getKafkaMaxRetries() { return kafkaMaxRetries; }
+    public void setKafkaMaxRetries(long kafkaMaxRetries) { this.kafkaMaxRetries = kafkaMaxRetries; }
 
     public boolean isKafkaEnabled() { return kafkaEnabled; }
     public void setKafkaEnabled(boolean kafkaEnabled) { this.kafkaEnabled = kafkaEnabled; }

@@ -30,6 +30,7 @@ Los valores de conexion e integracion se pasan por variables de entorno. No se v
 | `DB_URL` | URL JDBC de PostgreSQL | `jdbc:postgresql://localhost:5432/catalogo_db` |
 | `DB_USERNAME` | Usuario de la base | `postgres` |
 | `DB_PASSWORD` | Password de la base | `postgres` |
+| `DB_PORT` | Puerto publicado por `compose.yaml` para PostgreSQL | `5432` |
 | `CATEDRA_API_URL` | URL base de la API de la catedra | sin default |
 | `CATEDRA_JWT_TOKEN` | JWT tecnico de la cuenta del proyecto | sin default |
 | `CATEDRA_GROUP_ID` | `groupId` de la integracion tecnica; se usa para derivar topic, consumer group y namespace de escritura | sin default |
@@ -43,6 +44,20 @@ Los valores de conexion e integracion se pasan por variables de entorno. No se v
 | `CATEDRA_KAFKA_BOOTSTRAP_SERVERS` | Bootstrap servers de Kafka | sin default |
 | `CATEDRA_KAFKA_CONSUMER_GROUP_ID` | Consumer group de Kafka | `alumnos-{groupId}` |
 | `CATEDRA_KAFKA_CATALOG_TOPIC` | Topico de eventos de catalogo | `catedra.catalog.{groupId}` |
+| `CATEDRA_KAFKA_DLT_TOPIC` | Topico de eventos fallidos | `{catalogTopic}.dlt` |
+| `CATEDRA_KAFKA_SECURITY_PROTOCOL` | `PLAINTEXT`, `SSL`, `SASL_PLAINTEXT` o `SASL_SSL` | `PLAINTEXT` |
+| `CATEDRA_KAFKA_SASL_MECHANISM` | Mecanismo SASL, por ejemplo `PLAIN` o `SCRAM-SHA-512` | sin default |
+| `CATEDRA_KAFKA_SASL_JAAS_CONFIG` | Configuracion JAAS del cliente Kafka | sin default |
+| `CATEDRA_KAFKA_SSL_TRUSTSTORE_LOCATION` | Ruta al truststore Kafka | sin default |
+| `CATEDRA_KAFKA_SSL_TRUSTSTORE_PASSWORD` | Password del truststore Kafka | sin default |
+| `CATEDRA_KAFKA_SSL_TRUSTSTORE_TYPE` | Tipo de truststore | `JKS` |
+| `CATEDRA_KAFKA_SSL_KEYSTORE_LOCATION` | Ruta al keystore Kafka para mTLS | sin default |
+| `CATEDRA_KAFKA_SSL_KEYSTORE_PASSWORD` | Password del keystore Kafka | sin default |
+| `CATEDRA_KAFKA_SSL_KEYSTORE_TYPE` | Tipo de keystore | `JKS` |
+| `CATEDRA_KAFKA_SSL_KEY_PASSWORD` | Password de la clave privada | sin default |
+| `CATEDRA_KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM` | Algoritmo de verificacion de hostname; vacio la desactiva | sin default |
+| `CATEDRA_KAFKA_RETRY_INITIAL_MS` | Backoff inicial entre reintentos Kafka | `1000` |
+| `CATEDRA_KAFKA_MAX_RETRIES` | Cantidad maxima de reintentos Kafka | `3` |
 | `CATEDRA_KAFKA_ENABLED` | Habilita el listener de Kafka | `true` |
 | `CATEDRA_RECONCILIATION_ENABLED` | Habilita la reconciliacion periodica | `true` |
 | `CATEDRA_RECONCILIATION_INTERVAL_MS` | Intervalo de reconciliacion | `60000` |
@@ -57,7 +72,7 @@ Los valores de conexion e integracion se pasan por variables de entorno. No se v
 
 Si `CATEDRA_KAFKA_CATALOG_TOPIC`, `CATEDRA_KAFKA_CONSUMER_GROUP_ID` o `CATEDRA_REDIS_WRITE_NAMESPACE` no se informan, se derivan de `CATEDRA_GROUP_ID` con el formato del contrato de catedra. Un valor explicito siempre tiene prioridad. El listener de Kafka solo se registra cuando hay `groupId` o un topic explicito configurado.
 
-Para desarrollo local se pueden definir en la run config del IDE o en un archivo `application-local.yml` (ignorado por git).
+Para desarrollo local se pueden definir en la run config del IDE o en un archivo `.env` en la raiz (ignorado por git). Nunca versionar secretos.
 
 ## Seguridad
 
@@ -88,7 +103,7 @@ Ejemplo de payload de JWT emitido por `servicio-turnos`:
 - **Snapshot:** reemplaza el catalogo completo dentro de una transaccion.
 - **Incremental:** aplica cada version de cambio en su propia transaccion y avanza la version local.
 - **Discontinuidad:** si la version local quedo fuera de la ventana de Redis (`localVersion < oldestVersion`), si `localVersion > redisVersion` o si Redis no informa la version actual, se fuerza un snapshot.
-- **Kafka:** consume `catedra.catalog.{groupId}` con el consumer group `alumnos-{groupId}`, deduplica por `eventId` en `processed_catalog_events` y confirma el offset solo si el procesamiento fue exitoso.
+- **Kafka:** consume `catedra.catalog.{groupId}` con el consumer group `alumnos-{groupId}`, deduplica por `eventId` en `processed_catalog_events` y confirma el offset solo si el procesamiento fue exitoso y la version local alcanzo `newVersion`.
 - **Provisioning:** si `CATEDRA_PROVISIONING_STATUS` esta informado y no es `PROVISIONED`, no se ejecuta el snapshot inicial, no corre la reconciliacion y los endpoints manuales de sincronizacion devuelven `503`.
 - **Reconciliacion:** job periodico que ejecuta sincronizacion incremental para recuperar eventos perdidos.
 - **Limpieza:** job periodico que elimina eventos deduplicados anteriores a la retencion configurada.

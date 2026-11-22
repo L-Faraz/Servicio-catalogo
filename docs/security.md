@@ -40,7 +40,7 @@ El decode y validación se configuran en `SecurityConfig` con `NimbusJwtDecoder`
 
 Los endpoints de consulta son de solo lectura. Las operaciones de sincronización están restringidas porque pueden reemplazar la copia local.
 
-La dependencia de Spring Boot Actuator todavía no está incluida en `build.gradle`; las reglas de seguridad para `/actuator/health` quedan preparadas para cuando se agregue.
+Spring Boot Actuator está incluido en `build.gradle`. Solo `/actuator/health` y sus subrutas son públicos; el resto de Actuator no se expone en la configuración actual.
 
 ## 4. CORS
 
@@ -62,11 +62,12 @@ Sin variable configurada, no se registran orígenes permitidos. CORS solo aplica
 | JWT del proyecto | `APP_JWT_SECRET` | Validar JWT recibidos por este servicio y por `servicio-turnos`. |
 | JWT técnico de catedra | `CATEDRA_JWT_TOKEN` | Llamar a la API REST de la catedra. |
 | Credenciales Redis | `CATEDRA_REDIS_USERNAME`, `CATEDRA_REDIS_PASSWORD` | Conectarse a Redis de la catedra. |
+| Credenciales Kafka | `CATEDRA_KAFKA_SASL_JAAS_CONFIG`, `CATEDRA_KAFKA_SSL_TRUSTSTORE_PASSWORD`, `CATEDRA_KAFKA_SSL_KEYSTORE_PASSWORD`, `CATEDRA_KAFKA_SSL_KEY_PASSWORD` | Conectarse al broker con SASL o mTLS. |
 | Credenciales DB | `DB_USERNAME`, `DB_PASSWORD` | Conectarse a PostgreSQL. |
 
 Todos se externalizan por variables de entorno. No hay secretos en el código fuente, tests, README ni documentación.
 
-No se registran tokens en logs. Los mensajes de error de integración pueden incluir mensajes de excepción de Redis o HTTP, pero no el valor del bearer token.
+No se registran tokens en logs. Los mensajes de error de integración pueden incluir mensajes de excepción de Redis o HTTP, pero no el valor del bearer token, de la configuración JAAS ni de los passwords de keystore/truststore.
 
 ## 6. Contrato con `servicio-turnos`
 
@@ -86,4 +87,4 @@ Reglas relevantes:
 - No hay rate limiting ni protección contra fuerza bruta; `servicio-turnos` es responsable del login.
 - No hay mTLS entre servicios; se confía en HS256 compartido y en la red de despliegue.
 - No hay auditoría de accesos ni correlación de requests.
-- No se exponen endpoints Actuator hasta agregar la dependencia correspondiente.
+- Se expone únicamente `/actuator/health`; no se exponen métricas, beans, env ni endpoints de escritura de Actuator.
