@@ -34,13 +34,14 @@ El decode y validación se configuran en `SecurityConfig` con `NimbusJwtDecoder`
 | --- | --- |
 | `/error` | público |
 | `/actuator/health`, `/actuator/health/**` | público, configurado en la cadena de seguridad |
+| `/actuator/metrics`, `/actuator/metrics/**` | `SERVICE`, `ADMIN` |
 | `/api/synchronization/**` | `SERVICE`, `ADMIN` |
 | `/api/**` restante | `USER`, `SERVICE`, `ADMIN` |
 | cualquier otra ruta | autenticado |
 
 Los endpoints de consulta son de solo lectura. Las operaciones de sincronización están restringidas porque pueden reemplazar la copia local.
 
-Spring Boot Actuator está incluido en `build.gradle`. Solo `/actuator/health` y sus subrutas son públicos; el resto de Actuator no se expone en la configuración actual.
+Spring Boot Actuator está incluido en `build.gradle`. Se exponen `/actuator/health` y `/actuator/metrics`: el primero es público y el segundo requiere `SERVICE` o `ADMIN`. No se exponen beans, env ni endpoints de escritura.
 
 ## 4. CORS
 
@@ -87,4 +88,4 @@ Reglas relevantes:
 - No hay rate limiting ni protección contra fuerza bruta; `servicio-turnos` es responsable del login.
 - No hay mTLS entre servicios; se confía en HS256 compartido y en la red de despliegue.
 - No hay auditoría de accesos ni correlación de requests.
-- Se expone únicamente `/actuator/health`; no se exponen métricas, beans, env ni endpoints de escritura de Actuator.
+- Se exponen `/actuator/health` y `/actuator/metrics`; no se exponen beans, env ni endpoints de escritura de Actuator.

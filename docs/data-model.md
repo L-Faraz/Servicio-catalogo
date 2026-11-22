@@ -6,7 +6,7 @@ Todas las tablas de este documento pertenecen a `Servicio-catalogo`. No hay tabl
 
 La catedra es la fuente autoritativa externa, pero este servicio solo consume su API REST, Redis y Kafka. No accede a bases de la catedra.
 
-La base local se administra con Flyway. Las migraciones actuales son `V1__init_catalog.sql` y `V2__index_processed_catalog_events.sql`; Hibernate está configurado con `ddl-auto: none`.
+La base local se administra con Flyway. Las migraciones actuales son `V1__init_catalog.sql`, `V2__index_processed_catalog_events.sql` y `V3__sync_status_and_cleanup.sql`; Hibernate está configurado con `ddl-auto: none`.
 
 ## 2. Diagrama
 
@@ -28,7 +28,6 @@ erDiagram
     bigint id PK
     varchar first_name
     varchar last_name
-    varchar email
     bigint category_id FK
     boolean enabled
     timestamptz created_at
@@ -57,6 +56,13 @@ erDiagram
     varchar event_id PK
     timestamptz processed_at
   }
+
+  SYNC_STATUS {
+    bigint id PK
+    varchar state
+    varchar last_error
+    timestamptz updated_at
+  }
 ```
 
 ## 3. Tablas
@@ -83,13 +89,12 @@ Profesionales de la copia local.
 | `id` | `bigint` | PK | ID de la catedra. |
 | `first_name` | `varchar(255)` | NOT NULL | Nombre. |
 | `last_name` | `varchar(255)` | NOT NULL | Apellido. |
-| `email` | `varchar(255)` | nullable | Columna extensible local; no viene en el contrato de catedra y hoy no se informa. |
 | `category_id` | `bigint` | FK a `categories(id)` | Categoría vigente. |
 | `enabled` | `boolean` | NOT NULL | Alta lógica. |
 | `created_at` | `timestamptz` | NOT NULL | Fecha informada por la catedra. |
 | `updated_at` | `timestamptz` | NOT NULL | Última actualización informada por la catedra. |
 
-Índice: `idx_professionals_category` sobre `category_id`. El campo `email` se conserva por compatibilidad con la migración inicial, pero no participa en la sincronización ni en las consultas.
+Índice: `idx_professionals_category` sobre `category_id`. La columna `email` de la migración inicial fue eliminada por `V3__sync_status_and_cleanup.sql` porque no pertenece al contrato.
 
 ### `weekly_schedules`
 
@@ -131,6 +136,19 @@ Deduplicación funcional de eventos Kafka.
 | `processed_at` | `timestamptz` | NOT NULL | Momento en que se registró. |
 
 `V2__index_processed_catalog_events.sql` crea un índice por `processed_at`. `ProcessedCatalogEventsCleanupJob` elimina registros anteriores a `now - processed-events-retention-days` y se puede desactivar con `CATEDRA_PROCESSED_EVENTS_CLEANUP_ENABLED=false`.
+
+### `sync_status`
+
+Estado local persistente de la sincronización. Es un singleton con `id = 1`, creado por `V3__sync_status_and_cleanup.sql`.
+
+| Columna | Tipo | Restricción | Descripción |
+| --- | --- | --- | --- |
+| `id` | `bigint` | PK, siempre `1` | Singleton. |
+| `state` | `varchar(20)` | NOT NULL | `IDLE`, `SYNCING` o `ERROR`. |
+| `last_error` | `varchar(2000)` | nullable | Último mensaje de error, truncado si excede el tamaño. |
+| `updated_at` | `timestamptz` | NOT NULL | Último cambio de estado. |
+
+`SyncBootstrap.recoverInterrupted()` convierte un `SYNCING` heredado de un reinicio en `ERROR` con un mensaje explicativo.
 
 ## 4. Datos que no se almacenan aquí
 

@@ -29,8 +29,9 @@ public class CatedraRedisHealthIndicator implements HealthIndicator {
         RedisConnection connection = null;
         try {
             connection = connectionFactory.getConnection();
+            String currentVersionKey = properties.getEffectiveRedisReadNamespace() + "current-version";
             Boolean versionKeyPresent = connection.keyCommands()
-                    .exists("catedra:sync:current-version".getBytes(StandardCharsets.UTF_8));
+                    .exists(currentVersionKey.getBytes(StandardCharsets.UTF_8));
             String status = Boolean.TRUE.equals(versionKeyPresent) ? "connected" : "connected-no-version-key";
             return Health.up().withDetail("status", status).build();
         } catch (Exception exception) {

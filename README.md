@@ -11,7 +11,7 @@ Servicio de catalogo (categorias, profesionales y horarios) con sincronizacion c
 
 ## Base de datos
 
-El esquema se administra con Flyway. La migracion inicial esta en `src/main/resources/db/migration/V1__init_catalog.sql`.
+El esquema se administra con Flyway con `ddl-auto: none`. Las migraciones estan en `src/main/resources/db/migration/`; la mas reciente es `V3__sync_status_and_cleanup.sql`, que crea `sync_status` y elimina la columna no contractual `email`.
 
 Crear la base local una vez:
 
@@ -85,6 +85,7 @@ El servicio actua como resource server: no emite JWT de usuarios, solo valida lo
 - El resto de las APIs acepta roles `USER`, `SERVICE` o `ADMIN`.
 - `CATEDRA_JWT_TOKEN` sigue siendo exclusivamente el token tecnico para la API de la catedra.
 - `APP_CORS_ALLOWED_ORIGINS` acepta una lista separada por comas, por ejemplo `http://localhost:3000,http://localhost:8080`.
+- `/actuator/health` es publico; `/actuator/metrics` requiere rol `SERVICE` o `ADMIN`.
 
 Ejemplo de payload de JWT emitido por `servicio-turnos`:
 
@@ -107,6 +108,8 @@ Ejemplo de payload de JWT emitido por `servicio-turnos`:
 - **Provisioning:** si `CATEDRA_PROVISIONING_STATUS` esta informado y no es `PROVISIONED`, no se ejecuta el snapshot inicial, no corre la reconciliacion y los endpoints manuales de sincronizacion devuelven `503`.
 - **Reconciliacion:** job periodico que ejecuta sincronizacion incremental para recuperar eventos perdidos.
 - **Limpieza:** job periodico que elimina eventos deduplicados anteriores a la retencion configurada.
+- **Estado:** `IDLE`, `SYNCING`, `ERROR` y el ultimo error se persistuyen en `sync_status`; un `SYNCING` heredado de un reinicio se marca como `ERROR`.
+- **Concurrencia:** el despliegue soportado es de una sola replica; no escalar horizontalmente sin agregar un lock distribuido.
 
 ## Endpoints
 
@@ -120,6 +123,8 @@ Ejemplo de payload de JWT emitido por `servicio-turnos`:
 | `POST` | `/api/synchronization/snapshot` | Fuerza una sincronizacion por snapshot | `SERVICE`, `ADMIN` |
 | `POST` | `/api/synchronization/incremental` | Fuerza una sincronizacion incremental | `SERVICE`, `ADMIN` |
 | `GET` | `/api/synchronization/status` | Estado actual de la sincronizacion | `SERVICE`, `ADMIN` |
+| `GET` | `/actuator/health` | Health de la aplicacion | publico |
+| `GET` | `/actuator/metrics` | Metricas de sincronizacion y Kafka | `SERVICE`, `ADMIN` |
 
 Parametros de busqueda de profesionales: `categoryId`, `name`, `enabled` (default `true`), `dayOfWeek`, `time`, `page`, `size`, `sort`.
 
@@ -144,7 +149,7 @@ El contrato de integracion para construir disponibilidad y validar reservas esta
 ./gradlew test
 ```
 
-Los tests usan H2 en memoria, Kafka y Flyway desactivados, y no requieren servicios externos.
+Los tests unitarios y de MockMvc usan H2 en memoria con Kafka y Flyway desactivados. Ademas hay un test con Testcontainers que valida Flyway sobre PostgreSQL real y un test con Kafka embebido que valida la publicacion al DLT; ambos requieren Docker disponible.
 
 ## Docker
 

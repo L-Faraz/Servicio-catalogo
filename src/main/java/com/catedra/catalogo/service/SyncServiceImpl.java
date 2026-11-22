@@ -19,6 +19,7 @@ import com.catedra.catalogo.repository.RedisSyncRepository;
 import com.catedra.catalogo.repository.WeeklyScheduleRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -37,10 +38,6 @@ import java.util.concurrent.locks.ReentrantLock;
 @RequiredArgsConstructor
 public class SyncServiceImpl implements SyncService {
 
-    private static final String CATEGORIES_HASH = "catedra:sync:professional-categories";
-    private static final String PROFESSIONALS_HASH = "catedra:sync:professionals";
-    private static final String WEEKLY_SCHEDULES_HASH = "catedra:sync:weekly-schedules";
-
     private final CatedraApiClient catedraApiClient;
     private final CategoryRepository categoryRepository;
     private final ProfessionalRepository professionalRepository;
@@ -50,6 +47,7 @@ public class SyncServiceImpl implements SyncService {
     private final ObjectMapper objectMapper;
     private final TransactionTemplate transactionTemplate;
     private final SyncStatusService statusService;
+    private final MeterRegistry meterRegistry;
 
     private final ReentrantLock syncLock = new ReentrantLock();
 
@@ -63,6 +61,7 @@ public class SyncServiceImpl implements SyncService {
             return snapshot;
         } catch (RuntimeException e) {
             statusService.markError(message(e));
+            meterRegistry.counter("catalog.sync.failures", "operation", "snapshot").increment();
             throw e;
         } finally {
             syncLock.unlock();
@@ -73,14 +72,17 @@ public class SyncServiceImpl implements SyncService {
     public void processIncrementalSync() {
         if (!syncLock.tryLock()) {
             log.info("Ya hay una sincronizacion en curso. Se omite este intento.");
+            meterRegistry.counter("catalog.sync.skipped", "reason", "concurrent").increment();
             return;
         }
         try {
             statusService.markSyncing();
             doProcessIncremental();
+            meterRegistry.counter("catalog.sync.incrementals").increment();
             statusService.markIdle();
         } catch (RuntimeException e) {
             statusService.markError(message(e));
+            meterRegistry.counter("catalog.sync.failures", "operation", "incremental").increment();
             throw e;
         } finally {
             syncLock.unlock();
@@ -142,6 +144,7 @@ public class SyncServiceImpl implements SyncService {
         validateSnapshot(snapshot);
 
         transactionTemplate.executeWithoutResult(status -> applySnapshot(snapshot));
+        meterRegistry.counter("catalog.sync.snapshots").increment();
         log.info("Snapshot aplicado. Version local: {}", snapshot.snapshotVersion());
         return snapshot;
     }
@@ -295,6 +298,7 @@ public class SyncServiceImpl implements SyncService {
                 applyVersion(version, change);
             } catch (CatalogDiscontinuityException e) {
                 log.warn("Discontinuidad aplicando version {}. Ejecutando snapshot: {}", version, e.getMessage());
+                meterRegistry.counter("catalog.sync.fallbacks", "reason", "discontinuity").increment();
                 doSnapshot();
                 return;
             }
@@ -341,7 +345,8 @@ public class SyncServiceImpl implements SyncService {
             if (id == null) {
                 throw new CatalogDiscontinuityException("El cambio incluye una categoria sin id");
             }
-            String json = redisSyncRepository.getEntityFromHash(CATEGORIES_HASH, id);
+            String json = redisSyncRepository.getEntityFromHash(
+                    redisSyncRepository.getProfessionalCategoriesHashKey(), id);
             if (json == null) {
                 throw new CatalogDiscontinuityException("Falta la categoria " + id + " en Redis");
             }
@@ -360,7 +365,8 @@ public class SyncServiceImpl implements SyncService {
             if (id == null) {
                 throw new CatalogDiscontinuityException("El cambio incluye un profesional sin id");
             }
-            String json = redisSyncRepository.getEntityFromHash(PROFESSIONALS_HASH, id);
+            String json = redisSyncRepository.getEntityFromHash(
+                    redisSyncRepository.getProfessionalsHashKey(), id);
             if (json == null) {
                 throw new CatalogDiscontinuityException("Falta el profesional " + id + " en Redis");
             }
@@ -379,7 +385,8 @@ public class SyncServiceImpl implements SyncService {
             if (id == null) {
                 throw new CatalogDiscontinuityException("El cambio incluye un horario sin id");
             }
-            String json = redisSyncRepository.getEntityFromHash(WEEKLY_SCHEDULES_HASH, id);
+            String json = redisSyncRepository.getEntityFromHash(
+                    redisSyncRepository.getWeeklySchedulesHashKey(), id);
             if (json == null) {
                 throw new CatalogDiscontinuityException("Falta el horario " + id + " en Redis");
             }

@@ -42,6 +42,19 @@ class CatedraPropertiesTest {
     }
 
     @Test
+    void derivesRedisReadPrefixFromConfiguredNamespace() {
+        CatedraProperties properties = new CatedraProperties();
+
+        assertThat(properties.getEffectiveRedisReadNamespace()).isEqualTo("catedra:sync:");
+
+        properties.setRedisReadNamespace("catedra:otro-grupo:*");
+        assertThat(properties.getEffectiveRedisReadNamespace()).isEqualTo("catedra:otro-grupo:");
+
+        properties.setRedisReadNamespace("catedra:otro-grupo");
+        assertThat(properties.getEffectiveRedisReadNamespace()).isEqualTo("catedra:otro-grupo:");
+    }
+
+    @Test
     void onlyProvisionedStatusIsConsideredReady() {
         CatedraProperties properties = new CatedraProperties();
 

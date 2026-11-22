@@ -1,0 +1,21 @@
+spring:
+  flyway:
+    enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+app:
+  security:
+    jwt:
+      secret: testcontainers-secret-key-long-enough-for-hs256
+      issuer: servicio-turnos
+    cors:
+      allowed-origins:
+
+catedra:
+  integration:
+    kafka-enabled: false
+    reconciliation-enabled: false
+    processed-events-cleanup-enabled: false
