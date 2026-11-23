@@ -58,7 +58,8 @@ El token de servicio no propaga la identidad del usuario final. El catalogo solo
 ## 4. URL base
 
 - Desarrollo local: `http://localhost:8081`
-- Docker Compose: `http://servicio-catalogo:8081`
+- Desde `servicio-turnos` con Compose independiente: `http://host.docker.internal:8081`
+- Docker Compose en una red compartida: `http://servicio-catalogo:8081`
 
 ## 5. Endpoints del contrato
 

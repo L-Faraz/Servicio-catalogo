@@ -32,6 +32,7 @@ Los valores de conexion e integracion se pasan por variables de entorno. No se v
 | `DB_PASSWORD` | Password de la base | `postgres` |
 | `DB_PORT` | Puerto publicado por `compose.yaml` para PostgreSQL | `5432` |
 | `CATEDRA_API_URL` | URL base de la API de la catedra | sin default |
+| `CATEDRA_LOGIN_USERNAME` / `CATEDRA_LOGIN_PASSWORD` | Credenciales de la cuenta tecnica; si se completan, el servicio hace login y recupera la configuracion vigente al arrancar | sin default |
 | `CATEDRA_JWT_TOKEN` | JWT tecnico de la cuenta del proyecto | sin default |
 | `CATEDRA_GROUP_ID` | `groupId` de la integracion tecnica; se usa para derivar topic, consumer group y namespace de escritura | sin default |
 | `CATEDRA_PROVISIONING_STATUS` | Estado de provisioning informado por la catedra | sin default |
@@ -70,7 +71,9 @@ Los valores de conexion e integracion se pasan por variables de entorno. No se v
 | `APP_JWT_ISSUER` | Emisor esperado del JWT | `servicio-turnos` |
 | `APP_CORS_ALLOWED_ORIGINS` | Origenes permitidos por CORS, separados por coma | sin default |
 
-Si `CATEDRA_KAFKA_CATALOG_TOPIC`, `CATEDRA_KAFKA_CONSUMER_GROUP_ID` o `CATEDRA_REDIS_WRITE_NAMESPACE` no se informan, se derivan de `CATEDRA_GROUP_ID` con el formato del contrato de catedra. Un valor explicito siempre tiene prioridad. El listener de Kafka solo se registra cuando hay `groupId` o un topic explicito configurado.
+La cuenta tecnica se crea una sola vez con `POST /api/student/register` desde Postman o una herramienta HTTP equivalente. Con `CATEDRA_API_URL`, `CATEDRA_LOGIN_USERNAME` y `CATEDRA_LOGIN_PASSWORD`, el servicio autentica esa cuenta con `rememberMe=true`, recupera `GET /api/student/integration` y aplica JWT, `groupId`, Redis y Kafka devueltos antes de crear los beans de integracion. Si no se completan las credenciales, se pueden informar los valores individuales.
+
+Si `CATEDRA_KAFKA_CATALOG_TOPIC`, `CATEDRA_KAFKA_CONSUMER_GROUP_ID` o `CATEDRA_REDIS_WRITE_NAMESPACE` no se informan, se derivan de `CATEDRA_GROUP_ID` con el formato del contrato de catedra. Un valor explicito siempre tiene prioridad. El listener de Kafka solo se registra cuando `CATEDRA_KAFKA_ENABLED=true`; el topic se deriva de `groupId` salvo override explicito.
 
 Para desarrollo local se pueden definir en la run config del IDE o en un archivo `.env` en la raiz (ignorado por git). Nunca versionar secretos.
 

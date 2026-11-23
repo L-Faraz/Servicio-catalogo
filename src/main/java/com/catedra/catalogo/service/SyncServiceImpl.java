@@ -96,8 +96,8 @@ public class SyncServiceImpl implements SyncService {
             return false;
         }
         return categoryRepository.count() > 0
-                || professionalRepository.count() > 0
-                || weeklyScheduleRepository.count() > 0;
+                && professionalRepository.count() > 0
+                && weeklyScheduleRepository.count() > 0;
     }
 
     @Override

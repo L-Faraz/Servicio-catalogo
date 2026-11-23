@@ -49,6 +49,7 @@ public class SyncBootstrap implements ApplicationRunner {
             log.info("Sincronizacion inicial completada exitosamente.");
         } catch (Exception e) {
             log.error("Fallo la sincronizacion inicial del catalogo: {}", e.getMessage(), e);
+            throw new IllegalStateException("No se pudo completar la sincronizacion inicial del catalogo", e);
         }
     }
 }

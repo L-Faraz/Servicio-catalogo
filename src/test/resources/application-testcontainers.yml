@@ -16,6 +16,7 @@ app:
 
 catedra:
   integration:
+    redis-host: localhost
     kafka-enabled: false
     reconciliation-enabled: false
     processed-events-cleanup-enabled: false

@@ -59,7 +59,21 @@ catedra:
     kafka-bootstrap-servers: ${CATEDRA_KAFKA_BOOTSTRAP_SERVERS:}
     kafka-consumer-group-id: ${CATEDRA_KAFKA_CONSUMER_GROUP_ID:}
     kafka-catalog-topic: ${CATEDRA_KAFKA_CATALOG_TOPIC:}
+    kafka-dlt-topic: ${CATEDRA_KAFKA_DLT_TOPIC:}
     kafka-enabled: ${CATEDRA_KAFKA_ENABLED:true}
+    kafka-security-protocol: ${CATEDRA_KAFKA_SECURITY_PROTOCOL:PLAINTEXT}
+    kafka-sasl-mechanism: ${CATEDRA_KAFKA_SASL_MECHANISM:}
+    kafka-sasl-jaas-config: ${CATEDRA_KAFKA_SASL_JAAS_CONFIG:}
+    kafka-ssl-truststore-location: ${CATEDRA_KAFKA_SSL_TRUSTSTORE_LOCATION:}
+    kafka-ssl-truststore-password: ${CATEDRA_KAFKA_SSL_TRUSTSTORE_PASSWORD:}
+    kafka-ssl-truststore-type: ${CATEDRA_KAFKA_SSL_TRUSTSTORE_TYPE:JKS}
+    kafka-ssl-keystore-location: ${CATEDRA_KAFKA_SSL_KEYSTORE_LOCATION:}
+    kafka-ssl-keystore-password: ${CATEDRA_KAFKA_SSL_KEYSTORE_PASSWORD:}
+    kafka-ssl-keystore-type: ${CATEDRA_KAFKA_SSL_KEYSTORE_TYPE:JKS}
+    kafka-ssl-key-password: ${CATEDRA_KAFKA_SSL_KEY_PASSWORD:}
+    kafka-ssl-endpoint-identification-algorithm: ${CATEDRA_KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM:}
+    kafka-retry-initial-ms: ${CATEDRA_KAFKA_RETRY_INITIAL_MS:1000}
+    kafka-max-retries: ${CATEDRA_KAFKA_MAX_RETRIES:3}
     reconciliation-enabled: ${CATEDRA_RECONCILIATION_ENABLED:true}
     reconciliation-interval-ms: ${CATEDRA_RECONCILIATION_INTERVAL_MS:60000}
     reconciliation-initial-delay-ms: ${CATEDRA_RECONCILIATION_INITIAL_DELAY_MS:30000}

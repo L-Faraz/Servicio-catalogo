@@ -10,6 +10,7 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.ProducerFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class KafkaConsumerConfigTest {
 
@@ -17,6 +18,7 @@ class KafkaConsumerConfigTest {
     void consumerGroupIsDerivedFromGroupId() {
         CatedraProperties properties = new CatedraProperties();
         properties.setGroupId("proyecto-juan-perez");
+        properties.setKafkaBootstrapServers("localhost:9092");
 
         ConsumerFactory<String, String> factory = new KafkaConsumerConfig(properties).consumerFactory();
 
@@ -30,12 +32,23 @@ class KafkaConsumerConfigTest {
     void explicitConsumerGroupTakesPrecedence() {
         CatedraProperties properties = new CatedraProperties();
         properties.setGroupId("proyecto-juan-perez");
+        properties.setKafkaBootstrapServers("localhost:9092");
         properties.setKafkaConsumerGroupId("custom-consumer-group");
 
         ConsumerFactory<String, String> factory = new KafkaConsumerConfig(properties).consumerFactory();
 
         assertThat(factory.getConfigurationProperties())
                 .containsEntry(ConsumerConfig.GROUP_ID_CONFIG, "custom-consumer-group");
+    }
+
+    @Test
+    void missingBootstrapFailsFast() {
+        CatedraProperties properties = new CatedraProperties();
+        properties.setGroupId("proyecto-juan-perez");
+
+        assertThatThrownBy(() -> new KafkaConsumerConfig(properties).consumerFactory())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("kafka-bootstrap-servers");
     }
 
     @Test

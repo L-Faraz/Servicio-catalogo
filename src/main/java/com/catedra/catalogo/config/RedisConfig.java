@@ -23,9 +23,10 @@ public class RedisConfig {
     public RedisConnectionFactory redisConnectionFactory(CatedraProperties properties) {
         RedisStandaloneConfiguration redisConfig = new RedisStandaloneConfiguration();
 
-        String host = StringUtils.hasText(properties.getRedisHost())
-                ? properties.getRedisHost()
-                : "localhost";
+        String host = properties.getRedisHost();
+        if (!StringUtils.hasText(host)) {
+            throw new IllegalStateException("catedra.integration.redis-host es obligatorio");
+        }
         int port = properties.getRedisPort() > 0 ? properties.getRedisPort() : 6379;
 
         redisConfig.setHostName(host);
