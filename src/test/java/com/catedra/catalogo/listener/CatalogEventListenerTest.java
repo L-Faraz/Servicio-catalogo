@@ -102,6 +102,15 @@ class CatalogEventListenerTest {
     }
 
     @Test
+    void eventWithWrongMessageKeyIsIgnored() {
+        listener.handleCatalogEvent(record(VALID_EVENT, "8"), acknowledgment);
+
+        verify(syncService, never()).processIncrementalSync();
+        verify(processedEventRepository, never()).save(any());
+        verify(acknowledgment).acknowledge();
+    }
+
+    @Test
     void blockedProvisioningIgnoresEventWithoutSynchronizing() {
         properties.setProvisioningStatus("PENDING");
 
@@ -158,6 +167,10 @@ class CatalogEventListenerTest {
     }
 
     private ConsumerRecord<String, String> record(String payload) {
-        return new ConsumerRecord<>("catedra.catalog.test-group", 0, 0L, "7", payload);
+        return record(payload, "7");
+    }
+
+    private ConsumerRecord<String, String> record(String payload, String key) {
+        return new ConsumerRecord<>("catedra.catalog.test-group", 0, 0L, key, payload);
     }
 }

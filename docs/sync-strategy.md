@@ -21,7 +21,7 @@ Los valores de integración se configuran por variables de entorno. Cuando no se
 
 Los valores explícitos tienen prioridad. El listener Kafka solo se registra si `kafka-enabled=true` y hay `groupId` o un topic explícito configurado.
 
-Si `provisioningStatus` está informado y no es `PROVISIONED`, `SyncBootstrap` no ejecuta el snapshot inicial.
+Si `provisioningStatus` está informado y no es `PROVISIONED`, `SyncBootstrap` no ejecuta el snapshot inicial. Si el snapshot inicial falla, `SyncBootstrap` propaga el error y el servicio no queda disponible con una copia local incompleta.
 
 ## 3. Claves Redis consumidas
 
@@ -29,13 +29,13 @@ Si `provisioningStatus` está informado y no es `PROVISIONED`, `SyncBootstrap` n
 | --- | --- | --- |
 | `catedra:sync:current-version` | String decimal | Versión actual publicada. |
 | `catedra:sync:oldest-available-version` | String decimal | Límite inferior de la ventana de cambios. |
-| `catedra:sync:metadata` | Hash | Metadatos de publicación; hoy no se usa en la lógica. |
+| `catedra:sync:metadata` | Hash | Metadatos de publicación; la versión mínima disponible se lee de `catedra:sync:oldest-available-version`. |
 | `catedra:sync:changes:{version}` | String JSON | IDs afectados por una versión. |
 | `catedra:sync:professional-categories` | Hash | Categorías vigentes por ID. |
 | `catedra:sync:professionals` | Hash | Profesionales vigentes por ID. |
 | `catedra:sync:weekly-schedules` | Hash | Horarios vigentes por ID. |
 
-Las claves de lectura están fijas y coinciden con el namespace contractual `catedra:sync:*`. La propiedad `redisReadNamespace` existe, pero hoy no altera estas claves.
+Las claves de lectura se construyen con el prefijo configurado en `catedra.integration.redis-read-namespace` (`catedra:sync:*` por defecto) y los sufijos contractuales listados arriba.
 
 ## 4. Snapshot completo
 
@@ -137,6 +137,7 @@ Sirve para recuperar notificaciones Kafka perdidas. Solo actúa si la integraci�
 | Falla la sincronización desde Kafka | No se confirma el offset. |
 | Falla la reconciliación | Se registra warning y se espera el próximo ciclo. |
 | Catedra no disponible | `503 CATEDRA_UNAVAILABLE`; el estado local no se corrompe. |
+| Falla el snapshot inicial | El arranque falla; no se sirve un catálogo vacío. |
 
 ## 8. Estado expuesto
 
@@ -149,4 +150,4 @@ Sirve para recuperar notificaciones Kafka perdidas. Solo actúa si la integraci�
 - último error;
 - estado `IDLE`, `SYNCING` o `ERROR`.
 
-El estado y el último error viven en memoria (`SyncStatusService`) y se reinician con la aplicación. La versión y `lastSyncedAt` están persistidas.
+El estado, el último error, la versión y `lastSyncedAt` se persisten en `sync_status`; al arrancar, un estado `SYNCING` interrumpido se convierte en `ERROR` con `recoverInterrupted()`.

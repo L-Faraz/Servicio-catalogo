@@ -74,6 +74,13 @@ public class CatalogEventListener {
             return;
         }
 
+        if (!String.valueOf(event.newVersion()).equals(record.key())) {
+            log.warn("La message key no coincide con newVersion. Se ignora: {}", record.value());
+            count("invalid");
+            acknowledgment.acknowledge();
+            return;
+        }
+
         if (properties.isProvisioningBlocked()) {
             log.warn("Integracion no PROVISIONED ({}). Evento {} ignorado sin sincronizar.",
                     properties.getProvisioningStatus(), event.eventId());

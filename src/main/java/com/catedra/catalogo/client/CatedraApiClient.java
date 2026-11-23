@@ -27,7 +27,7 @@ public class CatedraApiClient {
             throw new IntegrationNotConfiguredException("La integracion con la catedra no esta configurada");
         }
 
-        String url = properties.getApiBaseUrl() + "/api/synchronization/snapshot";
+        String url = properties.getApiBaseUrl().replaceAll("/+$", "") + "/api/synchronization/snapshot";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(properties.getJwtToken());

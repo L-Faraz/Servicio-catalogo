@@ -61,6 +61,7 @@ Sin variable configurada, no se registran orígenes permitidos. CORS solo aplica
 | Secreto | Variable | Uso |
 | --- | --- | --- |
 | JWT del proyecto | `APP_JWT_SECRET` | Validar JWT recibidos por este servicio y por `servicio-turnos`. |
+| Credenciales de la cuenta técnica | `CATEDRA_LOGIN_USERNAME`, `CATEDRA_LOGIN_PASSWORD` | Obtener el JWT y la configuración vigente al arrancar. |
 | JWT técnico de catedra | `CATEDRA_JWT_TOKEN` | Llamar a la API REST de la catedra. |
 | Credenciales Redis | `CATEDRA_REDIS_USERNAME`, `CATEDRA_REDIS_PASSWORD` | Conectarse a Redis de la catedra. |
 | Credenciales Kafka | `CATEDRA_KAFKA_SASL_JAAS_CONFIG`, `CATEDRA_KAFKA_SSL_TRUSTSTORE_PASSWORD`, `CATEDRA_KAFKA_SSL_KEYSTORE_PASSWORD`, `CATEDRA_KAFKA_SSL_KEY_PASSWORD` | Conectarse al broker con SASL o mTLS. |

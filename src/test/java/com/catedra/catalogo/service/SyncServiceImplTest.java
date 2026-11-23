@@ -301,8 +301,23 @@ class SyncServiceImplTest {
         when(redisSyncRepository.getCurrentVersion()).thenReturn(7L);
         when(redisSyncRepository.getOldestAvailableVersion()).thenReturn(4L);
         when(categoryRepository.count()).thenReturn(0L);
+        when(versionRepository.findById(1L)).thenReturn(Optional.of(new CatalogVersion(6L)));
+        when(catedraApiClient.fetchSnapshot()).thenReturn(snapshot(7L));
+        doAnswer(invocation -> invocation.getArgument(0)).when(categoryRepository).save(any());
+        doAnswer(invocation -> invocation.getArgument(0)).when(professionalRepository).save(any());
+
+        syncService.processIncrementalSync();
+
+        verify(catedraApiClient).fetchSnapshot();
+        verify(redisSyncRepository, never()).getChangeForVersion(anyLong());
+    }
+
+    @Test
+    void partiallyPopulatedLocalCopyTriggersSnapshot() {
+        when(redisSyncRepository.getCurrentVersion()).thenReturn(7L);
+        when(redisSyncRepository.getOldestAvailableVersion()).thenReturn(4L);
+        when(categoryRepository.count()).thenReturn(3L);
         when(professionalRepository.count()).thenReturn(0L);
-        when(weeklyScheduleRepository.count()).thenReturn(0L);
         when(versionRepository.findById(1L)).thenReturn(Optional.of(new CatalogVersion(6L)));
         when(catedraApiClient.fetchSnapshot()).thenReturn(snapshot(7L));
         doAnswer(invocation -> invocation.getArgument(0)).when(categoryRepository).save(any());

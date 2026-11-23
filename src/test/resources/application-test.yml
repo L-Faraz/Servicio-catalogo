@@ -28,3 +28,4 @@ catedra:
     redis-port: 6379
     kafka-enabled: false
     reconciliation-enabled: false
+    provisioning-status: PENDING

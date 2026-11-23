@@ -100,7 +100,7 @@ No se usa una base compartida ni acceso directo a repositorios de otro servicio 
 - PostgreSQL externo gestionado con Flyway; `ddl-auto: none`.
 - Redis y Kafka son servicios administrados por la catedra.
 - Los valores de conexión y secretos se pasan por variables de entorno.
-- `compose.yaml` levanta PostgreSQL en `5433` y expone healthcheck para uso local.
+- `compose.yaml` levanta PostgreSQL en `5432` y expone healthcheck para uso local.
 
 La configuración de integración se deriva de `CATEDRA_GROUP_ID` cuando no se informan valores explícitos:
 

@@ -7,6 +7,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -41,6 +43,17 @@ class SyncBootstrapTest {
         new SyncBootstrap(syncService, statusService, properties).run(null);
 
         verify(syncService).syncSnapshot();
+    }
+
+    @Test
+    void failsStartupWhenInitialSnapshotFails() {
+        CatedraProperties properties = configuredProperties();
+        properties.setProvisioningStatus("PROVISIONED");
+        when(syncService.isLocalCopyConsistent()).thenReturn(false);
+        doThrow(new IllegalStateException("boom")).when(syncService).syncSnapshot();
+
+        assertThrows(IllegalStateException.class,
+                () -> new SyncBootstrap(syncService, statusService, properties).run(null));
     }
 
     @Test

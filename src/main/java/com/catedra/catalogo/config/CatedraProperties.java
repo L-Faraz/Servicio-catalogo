@@ -141,7 +141,9 @@ public class CatedraProperties {
     public String getKafkaDltTopic() { return kafkaDltTopic; }
     public void setKafkaDltTopic(String kafkaDltTopic) { this.kafkaDltTopic = kafkaDltTopic; }
 
-    public String getKafkaSecurityProtocol() { return kafkaSecurityProtocol; }
+    public String getKafkaSecurityProtocol() {
+        return StringUtils.hasText(kafkaSecurityProtocol) ? kafkaSecurityProtocol.toUpperCase() : "PLAINTEXT";
+    }
     public void setKafkaSecurityProtocol(String kafkaSecurityProtocol) { this.kafkaSecurityProtocol = kafkaSecurityProtocol; }
 
     public String getKafkaSaslMechanism() { return kafkaSaslMechanism; }

@@ -92,9 +92,11 @@ public class KafkaConsumerConfig {
     }
 
     private String bootstrapServers() {
-        return StringUtils.hasText(properties.getKafkaBootstrapServers())
-                ? properties.getKafkaBootstrapServers()
-                : "localhost:9092";
+        String servers = properties.getKafkaBootstrapServers();
+        if (!StringUtils.hasText(servers)) {
+            throw new IllegalStateException("catedra.integration.kafka-bootstrap-servers es obligatorio para usar Kafka");
+        }
+        return servers;
     }
 
     private Map<String, Object> securityConfig() {
