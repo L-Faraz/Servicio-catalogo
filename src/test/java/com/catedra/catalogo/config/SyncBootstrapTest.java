@@ -1,6 +1,7 @@
 package com.catedra.catalogo.config;
 
 import com.catedra.catalogo.service.SyncService;
+import com.catedra.catalogo.service.SyncStatusService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -16,13 +17,17 @@ class SyncBootstrapTest {
     @Mock
     private SyncService syncService;
 
+    @Mock
+    private SyncStatusService statusService;
+
     @Test
     void skipsInitialSnapshotWhileProvisioningIsNotCompleted() {
         CatedraProperties properties = configuredProperties();
         properties.setProvisioningStatus("PENDING");
 
-        new SyncBootstrap(syncService, properties).run(null);
+        new SyncBootstrap(syncService, statusService, properties).run(null);
 
+        verify(statusService).recoverInterrupted();
         verify(syncService, never()).syncSnapshot();
         verify(syncService, never()).isLocalCopyConsistent();
     }
@@ -33,7 +38,7 @@ class SyncBootstrapTest {
         properties.setProvisioningStatus("PROVISIONED");
         when(syncService.isLocalCopyConsistent()).thenReturn(false);
 
-        new SyncBootstrap(syncService, properties).run(null);
+        new SyncBootstrap(syncService, statusService, properties).run(null);
 
         verify(syncService).syncSnapshot();
     }
@@ -43,7 +48,7 @@ class SyncBootstrapTest {
         CatedraProperties properties = configuredProperties();
         when(syncService.isLocalCopyConsistent()).thenReturn(true);
 
-        new SyncBootstrap(syncService, properties).run(null);
+        new SyncBootstrap(syncService, statusService, properties).run(null);
 
         verify(syncService, never()).syncSnapshot();
     }
@@ -54,7 +59,7 @@ class SyncBootstrapTest {
         properties.setRedisHost(null);
         when(syncService.isLocalCopyConsistent()).thenReturn(false);
 
-        new SyncBootstrap(syncService, properties).run(null);
+        new SyncBootstrap(syncService, statusService, properties).run(null);
 
         verify(syncService).syncSnapshot();
     }
@@ -64,7 +69,7 @@ class SyncBootstrapTest {
         CatedraProperties properties = configuredProperties();
         properties.setApiBaseUrl(null);
 
-        new SyncBootstrap(syncService, properties).run(null);
+        new SyncBootstrap(syncService, statusService, properties).run(null);
 
         verify(syncService, never()).syncSnapshot();
     }

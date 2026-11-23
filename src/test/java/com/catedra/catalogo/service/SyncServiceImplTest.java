@@ -15,6 +15,7 @@ import com.catedra.catalogo.repository.ProfessionalRepository;
 import com.catedra.catalogo.repository.RedisSyncRepository;
 import com.catedra.catalogo.repository.WeeklyScheduleRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -78,6 +79,10 @@ class SyncServiceImplTest {
         lenient().when(categoryRepository.count()).thenReturn(1L);
         lenient().when(professionalRepository.count()).thenReturn(1L);
         lenient().when(weeklyScheduleRepository.count()).thenReturn(1L);
+        lenient().when(redisSyncRepository.getProfessionalCategoriesHashKey())
+                .thenReturn("catedra:sync:professional-categories");
+        lenient().when(redisSyncRepository.getProfessionalsHashKey()).thenReturn("catedra:sync:professionals");
+        lenient().when(redisSyncRepository.getWeeklySchedulesHashKey()).thenReturn("catedra:sync:weekly-schedules");
 
         syncService = new SyncServiceImpl(
                 catedraApiClient,
@@ -88,7 +93,8 @@ class SyncServiceImplTest {
                 redisSyncRepository,
                 objectMapper,
                 transactionTemplate,
-                statusService
+                statusService,
+                new SimpleMeterRegistry()
         );
     }
 

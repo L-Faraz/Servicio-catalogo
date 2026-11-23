@@ -5,6 +5,7 @@ import com.catedra.catalogo.domain.ProcessedCatalogEvent;
 import com.catedra.catalogo.repository.ProcessedCatalogEventRepository;
 import com.catedra.catalogo.service.SyncService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,7 +48,8 @@ class CatalogEventListenerTest {
                 syncService,
                 processedEventRepository,
                 properties,
-                new ObjectMapper().findAndRegisterModules()
+                new ObjectMapper().findAndRegisterModules(),
+                new SimpleMeterRegistry()
         );
     }
 

@@ -18,7 +18,12 @@ Los tests usan el perfil `test`:
 - configuración ficticia de catedra;
 - JWT de prueba con secreto local de tests.
 
-No se necesitan PostgreSQL, Redis ni Kafka para correr la suite actual.
+Dos tests adicionales usan el perfil `testcontainers` o Kafka embebido:
+
+- `PostgresFlywayIntegrationTest` levanta PostgreSQL con Testcontainers y valida las migraciones reales con `ddl-auto: validate`.
+- `KafkaDltIntegrationTest` levanta un broker Kafka embebido y valida la publicación al DLT.
+
+Se necesita Docker disponible para esos dos tests. No se necesita Redis real.
 
 ## 2. Stack de pruebas
 
@@ -28,6 +33,8 @@ No se necesitan PostgreSQL, Redis ni Kafka para correr la suite actual.
 - Spring Boot Test.
 - MockMvc.
 - H2.
+- Testcontainers con PostgreSQL.
+- Kafka embebido.
 
 ## 3. Cobertura actual
 
@@ -38,6 +45,9 @@ No se necesitan PostgreSQL, Redis ni Kafka para correr la suite actual.
 | `SyncServiceImplTest` | Snapshot, validación estricta de snapshot/cambios, copia local incompleta, versión vieja, cambio faltante, incremental normal, versión local adelantada, Redis sin versión, fallo de Redis y versión ya actualizada. |
 | `CatalogEventListenerTest` | Evento válido, versión no alcanzada, deduplicación concurrente, provisioning bloqueado, duplicado, tipo inválido, JSON inválido y fallo de sincronización sin ack. |
 | `CatalogSearchIntegrationTest` | Filtros combinados, estado habilitado y disponibilidad por día y hora. |
+| `CatalogHttpContractTest` | JSON de categorías, paginación de profesionales, detalle/horarios, `ProblemDetail`, roles y `/actuator/metrics`. |
+| `SyncStatusServiceTest` | Persistencia de estado, truncamiento del error y recuperación de un `SYNCING` interrumpido. |
+| `RedisSyncRepositoryTest` | Claves derivadas de `CATEDRA_REDIS_READ_NAMESPACE` y lectura de `current-version`. |
 | `SecurityIntegrationTest` | Sin token, token inválido, token vencido, lectura con rol `USER`, prohibición de sincronización para `USER`, acceso de `SERVICE` y CORS. |
 | `CatedraPropertiesTest` | Derivación de topic, consumer group y namespace desde `groupId`; prioridad de valores explícitos; estado de provisioning. |
 | `KafkaConsumerConfigTest` | Consumer group derivado, consumer group explícito, propagación SSL/SASL a consumer y producer, y derivación del DLT. |
@@ -45,6 +55,8 @@ No se necesitan PostgreSQL, Redis ni Kafka para correr la suite actual.
 | `CatalogReconciliationJobTest` | La reconciliación invoca la sincronización incremental cuando está habilitada. |
 | `CatedraRedisHealthIndicatorTest` | Health `UP`/`DOWN` con `EXISTS`, sin depender de `PING`. |
 | `ProcessedCatalogEventsCleanupJobTest` | Limpieza por retención y omisión cuando la retención no es positiva. |
+| `KafkaDltIntegrationTest` | Un registro fallido se publica en el topic DLT con su clave y valor originales. |
+| `PostgresFlywayIntegrationTest` | Flyway aplica `V1`-`V3` sobre PostgreSQL real, `ddl-auto: validate` y `email` queda eliminado. |
 
 ## 4. Escenarios importantes cubiertos
 
@@ -59,20 +71,22 @@ No se necesitan PostgreSQL, Redis ni Kafka para correr la suite actual.
 - Rechazo de snapshots o cambios incompletos antes de borrar la copia local.
 - Búsqueda local con filtros por categoría, nombre, estado y disponibilidad.
 - Rechazo de accesos no autenticados y no autorizados.
-- Configuración derivada del contrato de catedra.
+ - Configuración derivada del contrato de catedra.
+ - Namespace Redis de lectura aplicado a todas las claves.
+ - Estado de sincronización persistente y recuperación ante reinicio.
+ - Contrato HTTP de lectura y autorización de métricas.
+ - Publicación real al DLT con Kafka embebido y esquema Flyway validado con PostgreSQL real.
 
 ## 5. Limitaciones
 
-- No hay tests con PostgreSQL, Redis ni Kafka reales.
-- No se usan Testcontainers.
-- No hay tests de concurrencia sobre el lock de sincronización.
-- No hay tests de rollback transaccional con fallos parciales.
-- No hay tests de contrato que validen el JSON completo del snapshot y de `CatalogUpdated` ante campos adicionales.
-- No hay tests de todos los códigos de error del `GlobalExceptionHandler`.
-- Hay pruebas unitarias de limpieza de `processed_catalog_events`; faltaría un test de integración con PostgreSQL.
-- Hay pruebas del indicador de health de Redis; no hay un test HTTP dedicado de `/actuator/health`.
+ - No hay test con Redis real; la ACL de la catedra ya se validó manualmente con `EXISTS`.
+ - No hay tests de concurrencia multirréplica sobre el lock de sincronización; el despliegue soportado es de una sola réplica.
+ - No hay tests de rollback transaccional con fallos parciales.
+ - No hay tests de contrato que validen el JSON completo del snapshot y de `CatalogUpdated` ante campos adicionales.
+ - No hay tests de todos los códigos de error del `GlobalExceptionHandler`.
+ - No hay un evento real de la catedra disparado de extremo a extremo; sí se validaron suscripción real y DLT con Kafka embebido.
 
-Estas limitaciones están alineadas con el estado actual del repositorio y deben revisarse antes de la entrega final.
+Estas limitaciones no bloquean la entrega y están documentadas.
 
 ## 6. Convenciones
 

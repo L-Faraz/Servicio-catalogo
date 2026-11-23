@@ -1,6 +1,7 @@
 package com.catedra.catalogo.config;
 
 import com.catedra.catalogo.service.SyncService;
+import com.catedra.catalogo.service.SyncStatusService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -13,15 +14,19 @@ public class SyncBootstrap implements ApplicationRunner {
     private static final Logger log = LoggerFactory.getLogger(SyncBootstrap.class);
 
     private final SyncService syncService;
+    private final SyncStatusService statusService;
     private final CatedraProperties properties;
 
-    public SyncBootstrap(SyncService syncService, CatedraProperties properties) {
+    public SyncBootstrap(SyncService syncService, SyncStatusService statusService, CatedraProperties properties) {
         this.syncService = syncService;
+        this.statusService = statusService;
         this.properties = properties;
     }
 
     @Override
     public void run(ApplicationArguments args) {
+        statusService.recoverInterrupted();
+
         if (!properties.isSnapshotConfigured()) {
             log.warn("Integracion con catedra sin configurar. Se omite la sincronizacion inicial.");
             return;

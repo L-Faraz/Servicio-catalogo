@@ -74,6 +74,19 @@ public class CatedraProperties {
         return StringUtils.hasText(catalogTopic) ? catalogTopic + ".dlt" : "catedra.catalog.dlt";
     }
 
+    public String getEffectiveRedisReadNamespace() {
+        String namespace = StringUtils.hasText(redisReadNamespace)
+                ? redisReadNamespace.trim()
+                : "catedra:sync:*";
+        if (namespace.endsWith(":*")) {
+            return namespace.substring(0, namespace.length() - 1);
+        }
+        if (namespace.endsWith("*")) {
+            return namespace.substring(0, namespace.length() - 1);
+        }
+        return namespace.endsWith(":") ? namespace : namespace + ":";
+    }
+
     public String getEffectiveRedisWriteNamespace() {
         if (StringUtils.hasText(redisWriteNamespace)) {
             return redisWriteNamespace;

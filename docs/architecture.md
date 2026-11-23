@@ -37,7 +37,7 @@ El servicio central de la catedra es la fuente autoritativa remota. Este servici
 - Reservas, holds, disponibilidad por fecha u ocupaciones.
 - Consumir los topics Kafka de turnos.
 - Replicar el catálogo dentro de `servicio-turnos`.
-- Escritura en Redis: la ACL de la catedra permite namespaces propios, pero este servicio hoy solo consume `catedra:sync:*`.
+- Escritura en Redis: la ACL de la catedra permite namespaces propios, pero este servicio solo consume el namespace de lectura configurado con `CATEDRA_REDIS_READ_NAMESPACE` (default `catedra:sync:*`).
 
 ## 4. Componentes
 
@@ -96,6 +96,7 @@ No se usa una base compartida ni acceso directo a repositorios de otro servicio 
 ## 7. Despliegue y configuración
 
 - Aplicación Spring Boot única que escucha en el puerto `8081`.
+- Despliegue soportado: una sola réplica. El lock de sincronización es local (`ReentrantLock`); escalar horizontalmente requiere un lock distribuido.
 - PostgreSQL externo gestionado con Flyway; `ddl-auto: none`.
 - Redis y Kafka son servicios administrados por la catedra.
 - Los valores de conexión y secretos se pasan por variables de entorno.
@@ -107,6 +108,7 @@ La configuración de integración se deriva de `CATEDRA_GROUP_ID` cuando no se i
 | --- | --- |
 | Topic Kafka de catálogo | `catedra.catalog.{groupId}` |
 | Consumer group | `alumnos-{groupId}` |
+| Namespace Redis de lectura | `catedra:sync:*` (configurable) |
 | Namespace Redis de escritura | `alumnos:{groupId}:*` |
 
 Los valores explícitos tienen prioridad.
@@ -120,8 +122,11 @@ Los valores explícitos tienen prioridad.
 - El listener también omite eventos cuando el provisioning está bloqueado y solo confirma el offset si la versión local alcanzó `newVersion`.
 - Redis usa timeouts de conexión y comando de 2 segundos para no bloquear la reconciliación.
 - Kafka soporta `PLAINTEXT`, `SSL`, `SASL_PLAINTEXT` y `SASL_SSL` mediante variables de entorno; el cliente es propio de este servicio.
-- Tras agotar los reintentos, el evento fallido se publica en `{catalogTopic}.dlt`, configurable con `CATEDRA_KAFKA_DLT_TOPIC`.
-- La comunicación con `servicio-turnos` usa JWT de servicio; el token técnico de la catedra nunca se propaga.
+ - Tras agotar los reintentos, el evento fallido se publica en `{catalogTopic}.dlt`, configurable con `CATEDRA_KAFKA_DLT_TOPIC`; la publicación se valida con un test de Kafka embebido.
+ - La máquina de estados de sincronización se persiste en `sync_status` y se recupera al arrancar.
+ - Las claves Redis de lectura se derivan de `CATEDRA_REDIS_READ_NAMESPACE`; el healthcheck usa la misma clave `current-version`.
+ - Se exponen contadores Micrometer para snapshots, incrementales, fallos, fallbacks, skipped y eventos Kafka; `/actuator/metrics` requiere rol `SERVICE` o `ADMIN`.
+ - La comunicación con `servicio-turnos` usa JWT de servicio; el token técnico de la catedra nunca se propaga.
 - No existe un controlador interno separado: se reutilizan los endpoints `/api/**` documentados en [`contract-catalogo-turnos.md`](contract-catalogo-turnos.md).
 
 ## 9. Stack

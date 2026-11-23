@@ -7,6 +7,7 @@ import com.catedra.catalogo.repository.ProcessedCatalogEventRepository;
 import com.catedra.catalogo.service.SyncService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,15 +30,18 @@ public class CatalogEventListener {
     private final ProcessedCatalogEventRepository processedEventRepository;
     private final CatedraProperties properties;
     private final ObjectMapper objectMapper;
+    private final MeterRegistry meterRegistry;
 
     public CatalogEventListener(SyncService syncService,
                                  ProcessedCatalogEventRepository processedEventRepository,
                                  CatedraProperties properties,
-                                 ObjectMapper objectMapper) {
+                                 ObjectMapper objectMapper,
+                                 MeterRegistry meterRegistry) {
         this.syncService = syncService;
         this.processedEventRepository = processedEventRepository;
         this.properties = properties;
         this.objectMapper = objectMapper;
+        this.meterRegistry = meterRegistry;
     }
 
     @KafkaListener(
@@ -48,6 +52,7 @@ public class CatalogEventListener {
     public void handleCatalogEvent(ConsumerRecord<String, String> record, Acknowledgment acknowledgment) {
         CatalogUpdatedEventDTO event = parse(record.value());
         if (event == null) {
+            count("invalid");
             acknowledgment.acknowledge();
             return;
         }
@@ -57,12 +62,14 @@ public class CatalogEventListener {
                 || event.schemaVersion() != 1
                 || event.newVersion() == null) {
             log.warn("Evento de catalogo ignorado por tipo, esquema o nueva version invalidos: {}", record.value());
+            count("invalid");
             acknowledgment.acknowledge();
             return;
         }
 
         if (!StringUtils.hasText(event.eventId())) {
             log.error("Evento CatalogUpdated sin eventId. Se ignora: {}", record.value());
+            count("invalid");
             acknowledgment.acknowledge();
             return;
         }
@@ -70,12 +77,14 @@ public class CatalogEventListener {
         if (properties.isProvisioningBlocked()) {
             log.warn("Integracion no PROVISIONED ({}). Evento {} ignorado sin sincronizar.",
                     properties.getProvisioningStatus(), event.eventId());
+            count("blocked");
             acknowledgment.acknowledge();
             return;
         }
 
         if (processedEventRepository.existsById(event.eventId())) {
             log.info("Evento {} ya procesado. Se omite.", event.eventId());
+            count("duplicate");
             acknowledgment.acknowledge();
             return;
         }
@@ -87,11 +96,17 @@ public class CatalogEventListener {
                         + event.newVersion() + " del evento " + event.eventId());
             }
             markProcessed(event.eventId());
+            count("processed");
             acknowledgment.acknowledge();
         } catch (RuntimeException e) {
             log.error("Fallo el procesamiento del evento {}. No se confirma el offset.", event.eventId(), e);
+            count("failed");
             throw e;
         }
+    }
+
+    private void count(String outcome) {
+        meterRegistry.counter("catalog.kafka.events", "outcome", outcome).increment();
     }
 
     private void markProcessed(String eventId) {
